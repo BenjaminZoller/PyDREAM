@@ -465,7 +465,7 @@ class Dream():
         cross_probs = Dream_shared_vars.cross_probs[0:self.nCR]
         
         #Compute squared normalized jumping distance
-        m_loc = int(np.flatnonzero(self.CR_values == CR)[0])
+        m_loc = int(np.flatnonzero(self.CR_values == CR).item())
 
         Dream_shared_vars.ncr_updates[m_loc] += 1
         
