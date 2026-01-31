@@ -545,7 +545,7 @@ class Dream():
             snooker_choice = int(
                 np.random.multinomial(1, [self.snooker, 1-self.snooker]).argmax())
             
-            if snooker_choice[0] == 0:
+            if snooker_choice == 0:
                 run_snooker = True
             else:
                 run_snooker = False
