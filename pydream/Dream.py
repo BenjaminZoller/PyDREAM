@@ -542,8 +542,9 @@ class Dream():
     def set_snooker(self):
         """Choose to run a snooker update on a given iteration or not."""
         if self.snooker != 0:
-            snooker_choice = np.where(np.random.multinomial(1, [self.snooker, 1-self.snooker])==1)
-                
+            snooker_choice = int(
+                np.random.multinomial(1, [self.snooker, 1-self.snooker]).argmax())
+            
             if snooker_choice[0] == 0:
                 run_snooker = True
             else:
@@ -612,12 +613,13 @@ class Dream():
         d_prime : int
             number of parameter dimensions to be updated on this step."""
         
-        gamma_unity_choice = np.where(np.random.multinomial(1, [self.p_gamma_unity, 1-self.p_gamma_unity])==1)
+        gamma_unity_choice = int(
+            np.random.multinomial(1, [self.p_gamma_unity, 1-self.p_gamma_unity]).argmax())
         
         if snooker_choice:
             gamma = np.random.uniform(1.2, 2.2)
             
-        elif gamma_unity_choice[0] == 0:
+        elif gamma_unity_choice == 0:
             gamma = 1.0
         
         else:
@@ -905,7 +907,7 @@ class Dream():
         #Calculate probabilities
         sum_proposal_logps = np.sum(log_ps_sub)
         logp_prob = log_ps_sub/sum_proposal_logps
-        best_logp_loc = int(np.squeeze(np.where(np.random.multinomial(1, logp_prob)==1)[0]))
+        best_logp_loc = int(np.random.multinomial(1, logp_prob).argmax())
 
         #Randomly select one of the tested points with probability proportional to the probability density at the point
         q_proposal = np.squeeze(proposed_pts[best_logp_loc])
