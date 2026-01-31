@@ -520,7 +520,7 @@ class Dream():
         
         gamma_level_probs = Dream_shared_vars.gamma_level_probs[0:self.ngamma]
             
-        gamma_loc = int(np.where(self.gamma_level_values == gamma_level)[0])
+        gamma_loc = int(np.flatnonzero(self.gamma_level_values == gamma_level).item())
             
         Dream_shared_vars.ngamma_updates[gamma_loc] += 1
             
