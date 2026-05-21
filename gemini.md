@@ -9,19 +9,10 @@ Your task is to fix critical bugs and modernize the `pydream` codebase to be ful
 3. **Code Clarity & Efficiency**: Where changes are required, use standard, efficient, and readable Python/NumPy paradigms.
 4. **NumPy 2.4+ Compatibility**: Ensure no deprecated NumPy types or functions are used (e.g., `np.float`, `np.int`, `np.bool` must be converted to native `float`, `int`, `bool`).
 
-## Identified Bugs to Fix
-You must resolve the two critical bugs identified in the `PYDREAM_BUGS_DOCUMENTATION.md`:
+## Identified Bugs
+For a comprehensive list of previously identified bugs, their root causes, and resolution details, please refer to the `PYDREAM_BUGS_DOCUMENTATION.md` file. 
 
-### Bug 1: The `multitry=2` Crash (NumPy Dimensionality Squeeze)
-* **Issue**: When `multitry=2`, PyDream generates exactly 1 alternative point, which NumPy squeezes from a 2D shape `(1, N_parameters)` into a 1D shape `(N_parameters,)`. When passed to `pool.map()`, it iterates over the elements of the 1D array instead of passing the parameter array itself to the likelihood function.
-* **Target Area**: `mt_evaluate_logps` and proposal point generation inside `pydream/Dream.py`.
-* **Action**: Explicitly enforce a 2D shape for the `reference_pts` / `proposed_pts` array before passing it to `pool.map`. 
-  *(Example: `if proposed_pts.ndim == 1: proposed_pts = proposed_pts.reshape(1, -1)`)*
-
-### Bug 2: Nested Multiprocessing Bottleneck (`multitry` + `parallel=True`)
-* **Issue**: When running with `parallel=True` and `multitry > 1`, the main loop spawns workers for each chain. However, inside each worker, `self.parallel=True` triggers `mt_evaluate_logps` to spawn a *sub-pool* of workers. This nested multiprocessing causes severe IPC overhead, serializing large objects unnecessarily, and thrashing the CPU.
-* **Target Area**: `run_dream` in `pydream/core.py` and `mt_evaluate_logps` in `pydream/Dream.py`.
-* **Action**: Separate chain-level parallelization from multitry-level parallelization. Ensure `mt_evaluate_logps` does not spawn a new `multiprocessing.Pool` if it is already executing inside a worker process. Use sequential list comprehensions/maps for multitry evaluations if chain-level multiprocessing is active.
+**Current Status:** As noted in the documentation, all previously identified critical bugs (such as the `multitry=2` crash and the nested multiprocessing bottleneck) are currently marked as **FIXED**. Maintain these fixes and refer to the documentation if investigating related regressions.
 
 ## Modernization Checklist
 1. **Python 3.11+ Standards**:
@@ -36,5 +27,6 @@ You must resolve the two critical bugs identified in the `PYDREAM_BUGS_DOCUMENTA
 ## Workflow Instructions for the Agent
 When asked to implement these fixes:
 1. Focus on one specific module or bug at a time.
-2. Prioritize providing full diffs (Unified Diff Format) for modified files.
-3. Verify the changes against the Constraints listed above before outputting the code.
+2. First verify the nature of the bugs within the codebase, and then proceed to resolve them.
+3. Prioritize providing full diffs (Unified Diff Format) for modified files.
+4. Verify the changes against the Constraints listed above before outputting the code.

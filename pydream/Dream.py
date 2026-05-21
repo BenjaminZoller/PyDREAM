@@ -230,7 +230,7 @@ class Dream():
                 # Also get length of history array so we know when to save it at end of run.
                 if self.save_history:
                     with Dream_shared_vars.history.get_lock():
-                        self.len_history = len(np.frombuffer(Dream_shared_vars.history.get_obj()))
+                        self.len_history = len(np.frombuffer(Dream_shared_vars.history.get_obj(), dtype=np.float64))
             
             except AttributeError:
                 raise Exception('Dream should be run with multiple chains in parallel.  Set nchains > 1.')          
@@ -856,9 +856,13 @@ class Dream():
             Whether this is a multi-try reference draw. Default = False"""
         
         #If using multi-try and running in parallel farm out proposed points to process pool.
-        if parallel:
-            args = list(zip([self] * multitry, np.squeeze(proposed_pts)))
-            with pool.Pool(multitry, context=self.mp_context) as p:
+        #Bug 2 Fix: Only use parallel evaluation for multitry if we are in the MainProcess
+        #to avoid nested multiprocessing overhead.
+        if parallel and mp.current_process().name == 'MainProcess':
+            #Bug 1 Fix: Ensure proposed_pts is at least 2D before squeezing/iterating
+            pts = np.atleast_2d(proposed_pts)
+            args = list(zip([self] * len(pts), pts))
+            with pool.Pool(len(pts), context=self.mp_context) as p:
                 logps = p.map(call_logp, args)
             log_priors = [val[0] for val in logps]
             log_likes = [val[1] for val in logps]
@@ -866,12 +870,12 @@ class Dream():
         else:
             log_priors = []
             log_likes = []
-            if multitry == 2:
-                log_priors, log_likes = np.array([pfunc(np.squeeze(proposed_pts))])
-            else:
-                for pt in np.squeeze(proposed_pts):
-                    log_priors.append(pfunc(pt)[0])  
-                    log_likes.append(pfunc(pt)[1])
+            #Bug 1 Fix: Ensure proposed_pts is at least 2D
+            pts = np.atleast_2d(proposed_pts)
+            for pt in pts:
+                res = pfunc(pt)
+                log_priors.append(res[0])  
+                log_likes.append(res[1])
         
         log_priors = np.array(log_priors)  
         log_likes = np.array(log_likes)
@@ -944,7 +948,7 @@ class Dream():
             else:
                 prefix = self.model_name+'_'
 
-            self.save_history_to_disc(np.frombuffer(Dream_shared_vars.history.get_obj()), prefix)
+            self.save_history_to_disc(np.frombuffer(Dream_shared_vars.history.get_obj(), dtype=np.float64), prefix)
             
     def save_history_to_disc(self, history, prefix):
         """Save history and crossover probabilities to files at end of run.

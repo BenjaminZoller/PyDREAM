@@ -34,8 +34,7 @@ class Test_Dream_Initialization(unittest.TestCase):
     def test_fail_with_one_chain(self):
         """Test that DREAM fails if run with only one chain."""
         self.param, self.like = onedmodel()
-        assertRaisesRegex = self.assertRaisesRegexp if sys.version_info[0] < 3 else self.assertRaisesRegex
-        assertRaisesRegex(Exception, 'Dream should be run with at least ', run_dream, self.param, self.like, nchains=1)
+        self.assertRaisesRegex(Exception, 'Dream should be run with at least ', run_dream, self.param, self.like, nchains=1)
     
     def test_total_var_dimension_init(self):
         """Test that DREAM correctly identifies the total number of dimensions in all sampled parameters for a few test cases."""
