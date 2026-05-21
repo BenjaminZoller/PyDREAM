@@ -12,7 +12,7 @@ Created on Tue Dec  9 15:26:46 2014
 """
 
 from pydream.core import run_dream
-from pysb.integrate import Solver
+from pysb.simulator import ScipyOdeSimulator
 import numpy as np
 from pydream.parameters import SampledParam
 from scipy.stats import norm, uniform
@@ -24,8 +24,7 @@ from pysb.examples.robertson import model
 
 #Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
 tspan = np.linspace(0,40)
-solver = Solver(model, tspan)
-solver.run()
+simulator = ScipyOdeSimulator(model, tspan=tspan, compiler='python')
 
 #Load experimental data to which Robertson model will be fit here.  The "experimental data" in this case is just the total C trajectory at the default model parameters with a standard deviation of .01.
 pydream_path = os.path.dirname(inspect.getfile(run_dream))
@@ -46,21 +45,17 @@ pysb_sampled_parameter_names = [param.name for param in model.parameters_rules()
 
 def likelihood(parameter_vector):    
     
-    param_dict = {pname: pvalue for pname, pvalue in zip(pysb_sampled_parameter_names, parameter_vector)}
-  
-    for pname, pvalue in param_dict.items():
+    param_dict = {pname: 10**pvalue for pname, pvalue in zip(pysb_sampled_parameter_names, parameter_vector)}
+    
+    try:
+        #Simulate experimentally measured Ctotal values.
+        res = simulator.run(param_values=param_dict)
         
-        #Change model parameter values to current location in parameter space
-        
-        model.parameters[pname].value = 10**(pvalue)
-    
-    #Simulate experimentally measured Ctotal values.
-    
-    solver.run()
-    
-    #Calculate log probability contribution from simulated experimental values.
-    
-    logp_ctotal = np.sum(like_ctot.logpdf(solver.yobs['C_total']))
+        #Calculate log probability contribution from simulated experimental values.
+        logp_ctotal = np.sum(like_ctot.logpdf(res.observables['C_total']))
+    except Exception:
+        #If model simulation failed due to integrator errors, return a log probability of -inf.
+        return -np.inf
     
     #If model simulation failed due to integrator errors, return a log probability of -inf.
     if np.isnan(logp_ctotal):

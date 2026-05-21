@@ -27,7 +27,6 @@ from pydream.examples.robertson_nopysb.example_sample_robertson_nopysb_with_drea
 from pydream.examples.robertson_nopysb.example_sample_robertson_nopysb_with_dream import likelihood as rob_nop_like
 
 import numbers
-import sys
 
 class Test_Dream_Initialization(unittest.TestCase):
     
@@ -710,9 +709,14 @@ class Test_DREAM_examples(unittest.TestCase):
         """Test that the CORM example runs and returns values of the expected shape."""
         nchains = corm_kwargs['nchains']
         corm_kwargs['niterations'] = 100
-        corm_kwargs['verbose'] = False
+        corm_kwargs['verbose'] = True
+
+        valid_start = np.array([-2.5, 0.4, -2.1, 0.1, -0.3, -2.7, -0.7, 2.0, 0.0, -0.6, 2.0, -0.4])
+        corm_kwargs['start'] = [valid_start] * nchains
+        
         #Check likelihood fxn works
-        logp = corm_like([-5, -3, .1, 10, 8, 4, .33, -.58, 99, 1, 0, 11])
+        logp = corm_like(valid_start)
+        print(f"Diagnostic CORM logp: {logp}")
 
         #Check entire algorithm will run and give results of the expected shape
         sampled_params, logps = run_dream(**corm_kwargs)
@@ -730,11 +734,12 @@ class Test_DREAM_examples(unittest.TestCase):
         """Test that the mixture model example runs and returns values of the expected shape."""
         nchains = mix_kwargs['nchains']
         mix_kwargs['niterations'] = 100
-        mix_kwargs['verbose'] = False
+        mix_kwargs['verbose'] = True
         mix_kwargs['save_history'] = False
 
         #Check likelihood fxn works
         logp = mix_like(np.array([1, -9, 3, .04, 2, -8, 11, .001, -1, 10]))
+        print(f"Diagnostic mixture model logp: {logp}")
 
         #Check that sampling runs and gives output of expected shape
         sampled_params, logps = run_dream(**mix_kwargs)
@@ -750,11 +755,12 @@ class Test_DREAM_examples(unittest.TestCase):
         """Test that the n-dimensional gaussian example runs and returns values of the expected shape."""
         nchains = ndimgauss_kwargs['nchains']
         ndimgauss_kwargs['niterations'] = 100
-        ndimgauss_kwargs['verbose'] = False
+        ndimgauss_kwargs['verbose'] = True
         ndimgauss_kwargs['save_history'] = False
 
         #Check likelihood fxn runs
         logp = ndimgauss_like(np.random.random_sample((200,))*10)
+        print(f"Diagnostic n-dimensional gaussian logp: {logp}")
 
         #Check sampling runs and gives output of expected shape
         sampled_params, logps = run_dream(**ndimgauss_kwargs)
@@ -770,11 +776,15 @@ class Test_DREAM_examples(unittest.TestCase):
         """Test that the Robertson example runs and returns values of the expected shape."""
         nchains = robertson_kwargs['nchains']
         robertson_kwargs['niterations'] = 100
-        robertson_kwargs['verbose'] = False
+        robertson_kwargs['verbose'] = True
         robertson_kwargs['save_history'] = False
 
+        valid_start = np.array([3, 8, .11])
+        robertson_kwargs['start'] = [valid_start] * nchains
+
         #Check likelihood fxn runs
-        logp = robertson_like([3, 8, .11])
+        logp = robertson_like(valid_start)
+        print(f"Diagnostic Robertson logp: {logp}")
 
         #Check sampling runs and gives output of expected shape
         sampled_params, logps = run_dream(**robertson_kwargs)
@@ -790,11 +800,15 @@ class Test_DREAM_examples(unittest.TestCase):
 
         nchains = rob_nop_kwargs['nchains']
         rob_nop_kwargs['niterations'] = 100
-        rob_nop_kwargs['verbose'] = False
+        rob_nop_kwargs['verbose'] = True
         rob_nop_kwargs['save_history'] = False
 
+        valid_start = np.array([3, 8, .11])
+        rob_nop_kwargs['start'] = [valid_start] * nchains
+
         #Check likelihood fxn runs
-        logp = rob_nop_like([3, 8, .11])
+        logp = rob_nop_like(valid_start)
+        print(f"Diagnostic Robertson (no PySB) logp: {logp}")
 
         #Check sampling runs and gives output of expected shape
         sampled_params, logps = run_dream(**rob_nop_kwargs)

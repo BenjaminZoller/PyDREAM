@@ -5,7 +5,7 @@ Your task is to fix critical bugs and modernize the `pydream` codebase to be ful
 
 ## Strict Constraints
 1. **Retain Functionality**: The underlying mathematical and algorithmic logic of Differential Evolution Markov Chain (DREAM) sampling must remain strictly unchanged.
-2. **Minimal Code Changes**: Only make modifications that are absolutely necessary to achieve compatibility and fix the identified bugs. Avoid stylistic refactoring or rewriting entire blocks of code unless required for version compatibility.
+2. **Measured Refactoring**: While modernizing the codebase, allow for stylistic refactoring to meet basic Pylance, PEP-8, and type-hinting standards. Ensure these changes improve readability and maintainability without altering the mathematical logic.
 3. **Code Clarity & Efficiency**: Where changes are required, use standard, efficient, and readable Python/NumPy paradigms.
 4. **NumPy 2.4+ Compatibility**: Ensure no deprecated NumPy types or functions are used (e.g., `np.float`, `np.int`, `np.bool` must be converted to native `float`, `int`, `bool`).
 
@@ -23,6 +23,11 @@ For a comprehensive list of previously identified bugs, their root causes, and r
    - Verify boolean masking and indexing arrays properly return 1D or ND arrays as expected.
    - Pay attention to `np.frombuffer` usages with multiprocessing shared arrays to ensure no strict casting violations exist.
    - `np.nan_to_num` and `np.linalg.norm` operations should be checked to ensure keyword arguments and behaviors align with NumPy 2.4+.
+3. **Pylance & Type Hinting (New)**:
+   - Introduce basic type hinting (e.g., `int`, `float`, `bool`, `list`, `Callable` and basic `numpy.typing`) for function and method signatures.
+   - Resolve basic Pylance warnings (e.g., unused imports, undefined variables, unreachable code).
+   - Modernize string formatting (e.g., replace `'string %s' % var` with modern f-strings where it improves readability).
+   - Clean up excessive empty lines and enforce standard indentation.
 
 ## Workflow Instructions for the Agent
 When asked to implement these fixes:

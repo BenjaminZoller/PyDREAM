@@ -8,8 +8,9 @@ import traceback
 import multiprocessing as mp
 from multiprocessing import pool
 import time
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
-class Dream():
+class Dream:
     """An implementation of the MT-DREAM\ :sub:`(ZS)`\  algorithm introduced in:
         Laloy, E. & Vrugt, J. A. High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing. Water Resources Research 48, W01526 (2012).
     
@@ -60,11 +61,13 @@ class Dream():
         For more information please check: https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     """
 
-    def __init__(self, model, variables=None, nseedchains=None, nCR=3, adapt_crossover=True, adapt_gamma=False,
-                 crossover_burnin=None, DEpairs=1, lamb=.05, zeta=1e-12, history_thin=10, snooker=.10,
-                 p_gamma_unity=.20, gamma_levels=1, start_random=True, save_history=True, history_file=False,
-                 crossover_file=False, gamma_file=False, multitry=False, parallel=False, verbose=False,
-                 model_name=False, hardboundaries=True, mp_context=None, **kwargs):
+    def __init__(self, model: Any, variables: Optional[Iterable[Any]] = None, nseedchains: Optional[int] = None, 
+                 nCR: int = 3, adapt_crossover: bool = True, adapt_gamma: bool = False, crossover_burnin: Optional[int] = None, 
+                 DEpairs: Union[int, List[int]] = 1, lamb: float = .05, zeta: float = 1e-12, history_thin: int = 10, 
+                 snooker: float = .10, p_gamma_unity: float = .20, gamma_levels: int = 1, start_random: bool = True, 
+                 save_history: bool = True, history_file: Union[str, bool] = False, crossover_file: Union[str, bool] = False, 
+                 gamma_file: Union[str, bool] = False, multitry: Union[bool, int] = False, parallel: bool = False, verbose: bool = False,
+                 model_name: Union[str, bool] = False, hardboundaries: bool = True, mp_context: Optional[Any] = None, **kwargs):
 
         # Set Dream multiprocessing context
         self.mp_context = mp_context
@@ -78,9 +81,9 @@ class Dream():
 
         #Calculate total variable dimension and set boundaries
         self.boundaries = hardboundaries
-        self.total_var_dimension = 0
+        self.total_var_dimension: int = 0
         for var in self.variables:
-            self.total_var_dimension += var.dsize
+            self.total_var_dimension += int(var.dsize)
 
         #Set min and max values for boundaries
         if self.boundaries:
@@ -110,7 +113,7 @@ class Dream():
         #If the number of crossover values is greater than the total variable dimension, set it to be the total variable dimension
         if self.nCR > self.total_var_dimension:
             self.nCR = self.total_var_dimension
-            print('Warning: the total number of crossover values specified ('+str(nCR)+') is less than the total dimension of all variables ('+str(self.total_var_dimension)+').  Setting the number of crossover values to be equal to the total variable dimension.')
+            print(f'Warning: the total number of crossover values specified ({nCR}) is greater than the total dimension of all variables ({self.total_var_dimension}). Setting the number of crossover values to be equal to the total variable dimension.')
 
         #If there is only one variable dimension, don't adapt crossover values
         if self.total_var_dimension == 1 and adapt_crossover:
@@ -190,7 +193,10 @@ class Dream():
         self.verbose = verbose
         self.logp = self.model.total_logp
     
-    def astep(self, q0, T=1., last_loglike=None, last_logprior=None):
+    def astep(self, q0: Any, T: float = 1., last_loglike: Optional[float] = None, last_logprior: Optional[float] = None) -> Tuple[np.ndarray, float, float]:
+        # Ensure the starting point is evaluated as a NumPy array (avoids TypeError from lists)
+        q0 = np.asarray(q0)
+        
         # On first iteration, check that shared variables have been initialized (which only occurs if multiple chains have been started).
         if self.iter == 0:   
  
@@ -627,7 +633,7 @@ class Dream():
             
         return gamma
 
-    def draw_from_prior(self, model_vars, random_seed=False):
+    def draw_from_prior(self, model_vars: Iterable[Any], random_seed: bool = False) -> np.ndarray:
         """Draw from a parameter's prior to seed history array.
 
         Parameters
@@ -641,11 +647,11 @@ class Dream():
             try:
                 var_draw = variable.random(reseed=random_seed)
             except AttributeError:
-                raise Exception('Random draw from distribution for variable %s not implemented yet.' % variable)
+                raise Exception(f'Random draw from distribution for variable {variable} not implemented yet.')
             draw = np.append(draw, var_draw)
         return draw.flatten()
 
-    def sample_from_history(self, nseedchains, DEpairs, ndimensions, snooker=False):
+    def sample_from_history(self, nseedchains: int, DEpairs: int, ndimensions: int, snooker: bool = False) -> List[np.ndarray]:
         """Draw random point from the history array.
 
         Parameters
@@ -838,7 +844,7 @@ class Dream():
         
         return proposed_pts, snooker_logp, sampled_history_pt
     
-    def mt_evaluate_logps(self, parallel, multitry, proposed_pts, pfunc, ref=False):
+    def mt_evaluate_logps(self, parallel: bool, multitry: int, proposed_pts: np.ndarray, pfunc: Callable, ref: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Evaluate the log probability for multiple points in serial or parallel when using multi-try.
 
         Parameters
@@ -886,7 +892,7 @@ class Dream():
             
         return log_priors, log_likes
 
-    def mt_choose_proposal_pt(self, log_priors, log_likes, proposed_pts, T):
+    def mt_choose_proposal_pt(self, log_priors: np.ndarray, log_likes: np.ndarray, proposed_pts: np.ndarray, T: float) -> Tuple[np.ndarray, float, float, float, float]:
         """Select a proposed point with probability proportional to the probability density at that point.
 
         Parameters
@@ -922,7 +928,7 @@ class Dream():
         
         return q_proposal, q_logp, noT_logp, noT_loglike, q_prior
         
-    def record_history(self, nseedchains, ndimensions, q_new, len_history):
+    def record_history(self, nseedchains: int, ndimensions: int, q_new: np.ndarray, len_history: int) -> None:
         """Record accepted point in history.
 
         Parameters
@@ -950,7 +956,7 @@ class Dream():
 
             self.save_history_to_disc(np.frombuffer(Dream_shared_vars.history.get_obj(), dtype=np.float64), prefix)
             
-    def save_history_to_disc(self, history, prefix):
+    def save_history_to_disc(self, history: np.ndarray, prefix: str) -> None:
         """Save history and crossover probabilities to files at end of run.
 
         Parameters
@@ -974,7 +980,7 @@ class Dream():
         print('Saving fitted gamma level values: ',self.gamma_probabilities,' to file: ',filename)
         np.save(filename, self.gamma_probabilities)
     
-def call_logp(args):
+def call_logp(args: Tuple[Any, np.ndarray]) -> Tuple[float, float]:
     #Defined at top level so it can be pickled.
     instance = args[0]
     tested_point = args[1]
@@ -983,7 +989,7 @@ def call_logp(args):
     
     return logp_fxn(tested_point)
     
-def metrop_select(mr, q, q0):
+def metrop_select(mr: float, q: np.ndarray, q0: np.ndarray) -> np.ndarray:
     """Perform Metropolis rejection/acceptance
 
     Parameters

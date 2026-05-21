@@ -12,7 +12,7 @@ Created on Tue Dec  9 15:26:46 2014
 """
 
 from pydream.core import run_dream
-from pysb.integrate import Solver
+from pysb.simulator import ScipyOdeSimulator
 import numpy as np
 from pydream.parameters import SampledParam
 from pydream.convergence import Gelman_Rubin
@@ -23,11 +23,6 @@ import os.path
 from .corm import model as cox2_model
 
 pydream_path = os.path.dirname(inspect.getfile(run_dream))
-
-#Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
-tspan = np.linspace(0,10, num=100)
-solver = Solver(cox2_model, tspan)
-solver.run()
 
 #Load experimental data to which CORM model will be fit here
 location= pydream_path+'/examples/corm/exp_data/'
@@ -88,6 +83,25 @@ niterations = 10000
 for idx in kf_idxs:
     cox2_model.parameters[idx].value = 10 ** generic_kf
 
+# Initialize PySB solver object for running batched simulations.
+tspan = np.linspace(0, 10, num=100)
+simulator = ScipyOdeSimulator(cox2_model, tspan=tspan, integrator='lsoda', compiler='python')
+
+base_params = np.array([p.value for p in cox2_model.parameters])
+AA_0_idx = [p.name for p in cox2_model.parameters].index('AA_0')
+AG_0_idx = [p.name for p in cox2_model.parameters].index('AG_0')
+
+param_matrix = np.tile(base_params, (49, 1))
+row = 0
+for AA_init in exp_cond_AA:
+    for AG_init in exp_cond_AG:
+        param_matrix[row, AA_0_idx] = AA_init
+        param_matrix[row, AG_0_idx] = AG_init
+        row += 1
+
+# Cache indices for sampled parameters to speed up likelihood function
+sampled_param_indices = {pname: [p.name for p in cox2_model.parameters].index(pname) for pname in pysb_sampled_parameter_names}
+
 # Define likelihood function to generate simulated data that corresponds to experimental time points.
 # This function should take as input a parameter vector (parameter values are in the order dictated by first argument to run_dream function below).
 # The function returns a log probability value for the parameter vector given the experimental data.
@@ -96,36 +110,24 @@ def likelihood(parameter_vector):
 
     param_dict = {pname: pvalue for pname, pvalue in zip(pysb_sampled_parameter_names, parameter_vector)}
 
+    current_param_matrix = param_matrix.copy()
+
     for pname, pvalue in list(param_dict.items()):
-
+        idx = sampled_param_indices[pname]
         # Change model parameter values to current location in parameter space
-
         if 'kr' in pname:
-            cox2_model.parameters[pname].value = 10 ** (pvalue + generic_kf)
-
+            current_param_matrix[:, idx] = 10 ** (pvalue + generic_kf)
         elif 'kcat' in pname:
-            cox2_model.parameters[pname].value = 10 ** pvalue
+            current_param_matrix[:, idx] = 10 ** pvalue
 
     # Simulate experimentally measured PG and PGG values at all experimental AA and 2-AG starting conditions.
-
-    PG_array = np.zeros((7, 7), dtype='float64')
-    PGG_array = np.zeros((7, 7), dtype='float64')
-
-    arr_row = 0
-    arr_col = 0
-
-    for AA_init in exp_cond_AA:
-        for AG_init in exp_cond_AA:
-            cox2_model.parameters['AA_0'].value = AA_init
-            cox2_model.parameters['AG_0'].value = AG_init
-            solver.run()
-            PG_array[arr_row, arr_col] = solver.yobs['obsPG'][-1]
-            PGG_array[arr_row, arr_col] = solver.yobs['obsPGG'][-1]
-            if arr_col < 6:
-                arr_col += 1
-            else:
-                arr_col = 0
-        arr_row += 1
+    try:
+        res = simulator.run(param_values=current_param_matrix)
+        PG_array = np.array([obs['obsPG'][-1] for obs in res.observables]).reshape((7, 7))
+        PGG_array = np.array([obs['obsPGG'][-1] for obs in res.observables]).reshape((7, 7))
+    except Exception as e:
+        print(f"Exception during simulation: {e}")
+        return -np.inf
 
     # Calculate log probability contribution from simulated PG and PGG values.
 
