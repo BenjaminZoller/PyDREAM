@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import time
 
-class SampledParam():
+class SampledParam:
     """A SciPy-based parameter prior class.
 
     Parameters

@@ -6,9 +6,11 @@ from . import Dream_shared_vars
 from .Dream import Dream, DreamPool
 from .model import Model
 import traceback
+from typing import Callable, Iterable, List, Optional, Tuple, Any
 
-
-def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, restart=False, verbose=True, nverbose=10, tempering=False, mp_context=None, **kwargs):
+def run_dream(parameters: Iterable[Any], likelihood: Callable, nchains: int = 5, niterations: int = 50000, 
+              start: Optional[Iterable[Any]] = None, restart: bool = False, verbose: bool = True, 
+              nverbose: int = 10, tempering: bool = False, mp_context: Optional[Any] = None, **kwargs) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """Run DREAM given a set of parameters with priors and a likelihood function.
 
     Parameters
@@ -44,12 +46,12 @@ def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, 
         """
 
     if restart:
-        if start == None:
+        if start is None:
             raise Exception('Restart run specified but no start positions given.')
         if 'model_name' not in kwargs:
             raise Exception('Restart run specified but no model name to load history and crossover value files from given.')
 
-    if type(parameters) is not list:
+    if not isinstance(parameters, list):
         parameters = [parameters]
 
     model = Model(likelihood=likelihood, sampled_parameters=parameters)
@@ -71,7 +73,7 @@ def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, 
 
         else:
 
-            if type(start) is list:
+            if isinstance(start, list):
                 args = zip([step_instance]*nchains, [niterations]*nchains, start, [verbose]*nchains, [nverbose]*nchains)
 
             else:
@@ -86,7 +88,7 @@ def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, 
     return sampled_params, log_ps
 
 
-def _sample_dream(args):
+def _sample_dream(args: Tuple[Dream, int, Optional[np.ndarray], bool, int]) -> Tuple[np.ndarray, np.ndarray]:
 
     try: 
         dream_instance = args[0]
@@ -128,7 +130,7 @@ def _sample_dream(args):
 
     return sampled_params, log_ps
 
-def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
+def _sample_dream_pt(nchains: int, niterations: int, step_instance: Dream, start: Optional[np.ndarray], pool: Any, verbose: bool) -> Tuple[np.ndarray, np.ndarray]:
     
     T = np.zeros((nchains))
     T[0] = 1.
@@ -137,7 +139,7 @@ def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
     
     step_instances = [step_instance]*nchains   
     
-    if type(start) is list:
+    if isinstance(start, list):
         args = list(zip(step_instances, start, T, [None]*nchains, [None]*nchains))
     else:
         args = list(zip(step_instances, [start]*nchains, T, [None]*nchains, [None]*nchains))
@@ -235,7 +237,7 @@ def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
     return sampled_params, log_ps
             
 
-def _sample_dream_pt_chain(args):
+def _sample_dream_pt_chain(args: Tuple[Dream, np.ndarray, float, float, float]) -> Tuple[np.ndarray, float, float, Dream]:
 
     dream_instance = args[0]
     start = args[1]
@@ -247,11 +249,11 @@ def _sample_dream_pt_chain(args):
     
     return q1, logprior1, loglike1, dream_instance
 
-def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_context=None):
+def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Dream, start_pt: Optional[Iterable[Any]] = None, mp_context: Optional[Any] = None) -> DreamPool:
     
     min_njobs = (2*len(step_instance.DEpairs))+1
     if nchains < min_njobs:
-        raise Exception('Dream should be run with at least (2*DEpairs)+1 number of chains.  For current algorithmic settings, set njobs>=%s.' %str(min_njobs))
+        raise Exception(f'Dream should be run with at least (2*DEpairs)+1 number of chains.  For current algorithmic settings, set njobs>={min_njobs}.')
     if step_instance.history_file != False:
         old_history = np.load(step_instance.history_file)
         len_old_history = len(old_history.flatten())
@@ -270,7 +272,7 @@ def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_
     min_nseedchains = 2*len(step_instance.DEpairs)*nchains
     
     if step_instance.nseedchains < min_nseedchains:
-        raise Exception('The size of the seeded starting history is insufficient.  Increase nseedchains>=%s.' %str(min_nseedchains))
+        raise Exception(f'The size of the seeded starting history is insufficient.  Increase nseedchains>={min_nseedchains}.')
         
     current_position_dim = nchains*step_instance.total_var_dimension
     # Get context to define arrays
@@ -296,10 +298,10 @@ def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_
     n = ctx.Value('i', 0)
     tf = ctx.Value('c', b'F')
     
-    if step_instance.crossover_burnin == None:
+    if step_instance.crossover_burnin is None:
         step_instance.crossover_burnin = int(np.floor(niterations/10))
         
-    if start_pt != None:
+    if start_pt is not None:
         if step_instance.start_random:
             print('Warning: start position provided but random_start set to True.  Overrode random_start value and starting walk at provided start position.')
             step_instance.start_random = False
