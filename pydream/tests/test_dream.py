@@ -409,7 +409,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         for chainpoint in test_history:
             for point in chainpoint:
                 step.record_history(nseedchains=0, ndimensions=step.total_var_dimension, q_new=point, len_history=len(history_arr))
-        history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
+        history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj(), dtype=np.float64)
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
 
@@ -428,7 +428,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         for chainpoint in test_history:
             for point in chainpoint:
                 dream.record_history(nseedchains=0, ndimensions=dream.total_var_dimension, q_new=point, len_history=len(history_arr))
-        history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
+        history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj(), dtype=np.float64)
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
 
@@ -800,4 +800,3 @@ class Test_DREAM_examples(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

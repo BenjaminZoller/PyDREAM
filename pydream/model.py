@@ -5,14 +5,14 @@ Created on Tue Jan 12 16:40:32 2016
 @author: Erin
 """
 
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, List, Tuple, Union
 
 import numpy as np
 
 
 class Model:
 
-    def __init__(self, likelihood: Callable, sampled_parameters: Any):
+    def __init__(self, likelihood: Callable[[np.ndarray], float], sampled_parameters: Union[Any, List[Any]]) -> None:
         self.likelihood = likelihood
         if isinstance(sampled_parameters, list):
             self.sampled_parameters = sampled_parameters

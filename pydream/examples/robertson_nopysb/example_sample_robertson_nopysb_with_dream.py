@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar 23 16:58:34 2016
-
-@author: Erin
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Tue Dec  9 15:26:46 2014
 @author: Erin
 

@@ -4,7 +4,7 @@ import multiprocessing as mp
 import random
 import traceback
 from datetime import datetime
-from multiprocessing import pool
+from multiprocessing import context, pool
 from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -15,7 +15,7 @@ from . import Dream_shared_vars
 class Dream:
     r"""An implementation of the MT-DREAM\ :sub:`(ZS)`\  algorithm introduced in:
         Laloy, E. & Vrugt, J. A. High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing. Water Resources Research 48, W01526 (2012).
-    
+
     Parameters
     ----------
     variables : iterable of instance(s) of SampledParam class
@@ -69,7 +69,7 @@ class Dream:
                  snooker: float = .10, p_gamma_unity: float = .20, gamma_levels: int = 1, start_random: bool = True,
                  save_history: bool = True, history_file: Union[str, bool] = False, crossover_file: Union[str, bool] = False,
                  gamma_file: Union[str, bool] = False, multitry: Union[bool, int] = False, parallel: bool = False, verbose: bool = False,
-                 model_name: Union[str, bool] = False, hardboundaries: bool = True, mp_context: Optional[Any] = None, **kwargs):
+                 model_name: Union[str, bool] = False, hardboundaries: bool = True, mp_context: Optional[Any] = None, **kwargs: Any) -> None:
 
         # Set Dream multiprocessing context
         self.mp_context = mp_context
@@ -158,9 +158,9 @@ class Dream:
         self.p_gamma_unity = p_gamma_unity
 
         #If no multitry requested, set value to 1, if requested without a value, set to 5, else set to the value passed
-        if multitry == False:
+        if multitry is False:
             self.multitry = 1
-        elif multitry == True:
+        elif multitry is True:
             self.multitry = 5
         else:
             self.multitry = multitry
@@ -171,7 +171,7 @@ class Dream:
         self.last_logp = None
 
         #Set the number of seedchains to 10*dimensions to fit
-        if self.nseedchains == None:
+        if self.nseedchains is None:
             self.nseedchains = self.total_var_dimension*10
 
         #Set array of gamma values (decreasing step size with increasing level)
@@ -245,7 +245,7 @@ class Dream:
 
         try:
 
-            if last_loglike != None:
+            if last_loglike is not None:
                 self.last_like = last_loglike
                 self.last_prior = last_logprior
                 self.last_logp = T*self.last_like + self.last_prior
@@ -271,7 +271,7 @@ class Dream:
                 else:
                     proposed_pts, snooker_logp_prop, z = self.generate_proposal_points(self.multitry, q0, CR, DEpair_choice, gamma_level, snooker=True)
 
-            if self.last_logp == None:
+            if self.last_logp is None:
                 self.last_prior, self.last_like = self.logp(q0)
                 self.last_logp = T*self.last_like + self.last_prior
 
@@ -287,7 +287,7 @@ class Dream:
                 log_ps = T*log_likes + log_priors
 
                 #Check if all logps are -inf, in which case they'll all be impossible and we need to generate more proposal points
-                while np.all(np.isfinite(np.array(log_ps))==False):
+                while not np.any(np.isfinite(np.array(log_ps))):
                     if run_snooker:
                         proposed_pts, snooker_logp_prop, z = self.generate_proposal_points(self.multitry, q0, CR, DEpair_choice, gamma_level, snooker=run_snooker)
                     else:
@@ -421,7 +421,7 @@ class Dream:
             raise e
         return q_new, self.last_prior, self.last_like
 
-    def set_current_position_arr(self, ndimensions, q_new):
+    def set_current_position_arr(self, ndimensions: int, q_new: np.ndarray) -> None:
         """Add current position of chain to shared array available to other chains.
 
         Parameters
@@ -433,11 +433,11 @@ class Dream:
             accepted point in parameter space
         """
 
-        if self.nchains == None:
+        if self.nchains is None:
             current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj(), dtype=np.float64)
             self.nchains = len(current_positions)//ndimensions
 
-        if self.chain_n == None:
+        if self.chain_n is None:
             with Dream_shared_vars.nchains.get_lock():
                 self.chain_n = Dream_shared_vars.nchains.value-1
                 Dream_shared_vars.nchains.value -= 1
@@ -448,7 +448,7 @@ class Dream:
             end_cp = int(start_cp+ndimensions)
             Dream_shared_vars.current_positions[start_cp:end_cp] = np.array(q_new).flatten()
 
-    def estimate_crossover_probabilities(self, ndim, q0, q_new, CR):
+    def estimate_crossover_probabilities(self, ndim: int, q0: np.ndarray, q_new: np.ndarray, CR: float) -> np.ndarray:
         """Adapt crossover probabilities during crossover burn-in period.
 
         Parameters
@@ -485,9 +485,8 @@ class Dream:
         #Update probabilities of tested crossover value
         #Leave probabilities unchanged until all possible crossover values have had at least one successful move so that a given value's probability isn't prematurely set to 0, preventing further testing.
         delta_ms = np.array(Dream_shared_vars.delta_m[0:self.nCR])
-        ncr_updates = np.array(Dream_shared_vars.ncr_updates[0:self.nCR])
 
-        if np.all(delta_ms != 0) == True:
+        if np.all(delta_ms != 0):
             for m in range(self.nCR):
                 cross_probs[m] = (Dream_shared_vars.delta_m[m]/Dream_shared_vars.ncr_updates[m])*self.nchains
             cross_probs = cross_probs/np.sum(cross_probs)
@@ -498,7 +497,7 @@ class Dream:
 
         return cross_probs
 
-    def estimate_gamma_level_probs(self, ndim, q0, q_new, gamma_level):
+    def estimate_gamma_level_probs(self, ndim: int, q0: np.ndarray, q_new: np.ndarray, gamma_level: int) -> np.ndarray:
         """Adapt gamma level probabilities during burn-in
 
         Parameters
@@ -528,7 +527,7 @@ class Dream:
 
         delta_ms_gamma = np.array(Dream_shared_vars.delta_m_gamma[0:self.ngamma])
 
-        if np.all(delta_ms_gamma != 0) == True:
+        if np.all(delta_ms_gamma != 0):
 
             for m in range(self.ngamma):
                 gamma_level_probs[m] = (Dream_shared_vars.delta_m_gamma[m]/Dream_shared_vars.ngamma_updates[m])*self.nchains
@@ -539,7 +538,7 @@ class Dream:
 
         return gamma_level_probs
 
-    def set_snooker(self):
+    def set_snooker(self) -> bool:
         """Choose to run a snooker update on a given iteration or not."""
         if self.snooker != 0:
             snooker_choice = int(
@@ -554,7 +553,7 @@ class Dream:
 
         return run_snooker
 
-    def set_CR(self, CR_probs, CR_vals):
+    def set_CR(self, CR_probs: np.ndarray, CR_vals: np.ndarray) -> float:
         """Select crossover value for a given iteration.
 
         Parameters
@@ -569,7 +568,7 @@ class Dream:
 
         return CR
 
-    def set_DEpair(self, DEpairs):
+    def set_DEpair(self, DEpairs: np.ndarray) -> int:
         """Select the number of pairs of chains to be used for creating the next proposal point for a given iteration.
 
         Parameters
@@ -583,7 +582,7 @@ class Dream:
             DEpair_choice = 1
         return DEpair_choice
 
-    def set_gamma_level(self, gamma_level_probs, gamma_level_vals):
+    def set_gamma_level(self, gamma_level_probs: np.ndarray, gamma_level_vals: np.ndarray) -> int:
         """Set gamma level value given current probabilities and possible values.
 
         Parameters
@@ -599,7 +598,7 @@ class Dream:
 
         return gamma_level
 
-    def set_gamma(self, DEpairs, snooker_choice, gamma_level_choice, d_prime):
+    def set_gamma(self, DEpairs: int, snooker_choice: bool, gamma_level_choice: int, d_prime: int) -> float:
         """Select gamma value for a given iteration.
 
         Parameters
@@ -669,7 +668,7 @@ class Dream:
         sampled_chains = [Dream_shared_vars.history[start_loc:end_loc] for start_loc, end_loc in zip(start_locs, end_locs)]
         return sampled_chains
 
-    def generate_proposal_points(self, n_proposed_pts, q0, CR, DEpairs, gamma_level, snooker):
+    def generate_proposal_points(self, n_proposed_pts: int, q0: np.ndarray, CR: float, DEpairs: int, gamma_level: int, snooker: bool) -> Any:
         """Generate proposal points.
 
         Parameters
@@ -748,9 +747,9 @@ class Dream:
                     x_lower = masked_point < self.mins
                     x_upper = masked_point > self.maxs
                     if x_lower.any():
-                        masked_point[x_lower] = self.mins[x_lower] + np.random.rand(len(np.where(x_lower==True)[0])) * (self.maxs[x_lower]-self.mins[x_lower])
+                        masked_point[x_lower] = self.mins[x_lower] + np.random.rand(len(np.where(x_lower)[0])) * (self.maxs[x_lower]-self.mins[x_lower])
                     if x_upper.any():
-                        masked_point[x_upper] = self.mins[x_upper] + np.random.rand(len(np.where(x_upper==True)[0])) * (self.maxs[x_upper]-self.mins[x_upper])
+                        masked_point[x_upper] = self.mins[x_upper] + np.random.rand(len(np.where(x_upper)[0])) * (self.maxs[x_upper]-self.mins[x_upper])
 
                     proposed_pts[pt_num][self.boundary_mask] = masked_point
 
@@ -772,9 +771,9 @@ class Dream:
                 x_upper = masked_point > self.maxs
 
                 if x_lower.any():
-                    masked_point[x_lower] = self.mins[x_lower] + np.random.rand(len(np.where(x_lower==True)[0])) * (self.maxs[x_lower]-self.mins[x_lower])
+                    masked_point[x_lower] = self.mins[x_lower] + np.random.rand(len(np.where(x_lower)[0])) * (self.maxs[x_lower]-self.mins[x_lower])
                 if x_upper.any():
-                    masked_point[x_upper] = self.mins[x_upper] + np.random.rand(len(np.where(x_upper==True)[0])) * (self.maxs[x_upper]-self.mins[x_upper])
+                    masked_point[x_upper] = self.mins[x_upper] + np.random.rand(len(np.where(x_upper)[0])) * (self.maxs[x_upper]-self.mins[x_upper])
                 if not snooker:
                     try:
                         proposed_pts[0][self.boundary_mask] = masked_point
@@ -797,7 +796,7 @@ class Dream:
         else:
             return proposed_pts, snooker_logp, z
 
-    def snooker_update(self, n_proposed_pts, q0):
+    def snooker_update(self, n_proposed_pts: int, q0: np.ndarray) -> Tuple[Any, Any, Any]:
         """Generate a proposed point with snooker updating scheme.
 
         Parameters
@@ -1019,9 +1018,6 @@ class NonDaemonMixin(object):
     @daemon.setter
     def daemon(self, val):
         pass
-
-
-from multiprocessing import context
 
 
 # Exists on all platforms

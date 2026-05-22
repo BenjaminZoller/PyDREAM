@@ -2,6 +2,7 @@
 
 import multiprocessing as mp
 import traceback
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -10,7 +11,7 @@ from .Dream import Dream, DreamPool
 from .model import Model
 
 
-def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, restart=False, verbose=True, nverbose=10, tempering=False, mp_context=None, **kwargs):
+def run_dream(parameters: Union[Any, List[Any]], likelihood: Callable[[np.ndarray], float], nchains: int = 5, niterations: int = 50000, start: Optional[Union[Iterable[np.ndarray], np.ndarray]] = None, restart: bool = False, verbose: bool = True, nverbose: int = 10, tempering: bool = False, mp_context: Optional[Any] = None, **kwargs: Any) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """Run DREAM given a set of parameters with priors and a likelihood function.
 
     Parameters
@@ -88,7 +89,7 @@ def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, 
     return sampled_params, log_ps
 
 
-def _sample_dream(args):
+def _sample_dream(args: Tuple[Any, int, Optional[np.ndarray], bool, int]) -> Tuple[np.ndarray, np.ndarray]:
 
     try:
         dream_instance = args[0]
@@ -130,7 +131,7 @@ def _sample_dream(args):
 
     return sampled_params, log_ps
 
-def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
+def _sample_dream_pt(nchains: int, niterations: int, step_instance: Any, start: np.ndarray, pool: Any, verbose: bool) -> Tuple[np.ndarray, np.ndarray]:
 
     T = np.zeros((nchains))
     T[0] = 1.
@@ -237,7 +238,7 @@ def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
     return sampled_params, log_ps
 
 
-def _sample_dream_pt_chain(args):
+def _sample_dream_pt_chain(args: Tuple[Any, np.ndarray, float, float, float]) -> Tuple[np.ndarray, float, float, Any]:
 
     dream_instance = args[0]
     start = args[1]
@@ -249,12 +250,12 @@ def _sample_dream_pt_chain(args):
 
     return q1, logprior1, loglike1, dream_instance
 
-def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_context=None):
+def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Any, start_pt: Optional[np.ndarray] = None, mp_context: Optional[Any] = None) -> Any:
 
     min_njobs = (2*len(step_instance.DEpairs))+1
     if nchains < min_njobs:
         raise Exception('Dream should be run with at least (2*DEpairs)+1 number of chains.  For current algorithmic settings, set njobs>=%s.' %str(min_njobs))
-    if step_instance.history_file != False:
+    if step_instance.history_file is not False:
         old_history = np.load(step_instance.history_file)
         len_old_history = len(old_history.flatten())
         nold_history_records = len_old_history/step_instance.total_var_dimension
@@ -281,7 +282,7 @@ def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_
     else:
         ctx = mp_context
     history_arr = ctx.Array('d', [0] * int(arr_dim))
-    if step_instance.history_file != False:
+    if step_instance.history_file is not False:
         history_arr[0:len_old_history] = old_history.flatten()
     nCR = step_instance.nCR
     ngamma = step_instance.ngamma
@@ -314,7 +315,7 @@ def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_
 
     return p
 
-def _mp_dream_init(arr, cp_arr, nchains, crossover_probs, ncrossover_updates, delta_m, gamma_probs, ngamma_updates, delta_m_gamma, val, switch, burnin_barrier):
+def _mp_dream_init(arr: Any, cp_arr: Any, nchains: Any, crossover_probs: Any, ncrossover_updates: Any, delta_m: Any, gamma_probs: Any, ngamma_updates: Any, delta_m_gamma: Any, val: Any, switch: Any, burnin_barrier: Any) -> None:
       Dream_shared_vars.history = arr
       Dream_shared_vars.current_positions = cp_arr
       Dream_shared_vars.nchains = nchains
