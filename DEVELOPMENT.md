@@ -18,6 +18,14 @@ The project targets:
 
 ---
 
+## History and Authorship
+
+PyDREAM was originally authored by Erin Shockley, Ortega, and other previous contributors. 
+
+The project is currently maintained by **Benjamin Zoller**, who is leading the ongoing modernization, refactoring, and maintenance of the codebase (with assistance from Google's Gemini AI).
+
+---
+
 # Maintenance Philosophy
 
 Scientific software must prioritize:
