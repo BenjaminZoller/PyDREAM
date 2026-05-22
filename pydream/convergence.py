@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def Gelman_Rubin(sampled_parameters):
     nsamples = len(sampled_parameters[0])
     nchains = len(sampled_parameters)

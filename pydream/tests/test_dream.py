@@ -5,51 +5,52 @@ Created on Thu Oct  9 16:50:59 2014
 @author: Erin
 """
 
-import unittest
+import multiprocessing as mp
+import numbers
 import os
 import tempfile
+import unittest
 
-import multiprocessing as mp
 import numpy as np
+
 import pydream.Dream_shared_vars
+from pydream.core import _sample_dream, _sample_dream_pt, _sample_dream_pt_chain, _setup_mp_dream_pool, run_dream
 from pydream.Dream import Dream
-from pydream.core import run_dream, _setup_mp_dream_pool, _sample_dream, _sample_dream_pt, _sample_dream_pt_chain
-from pydream.model import Model
-from pydream.tests.test_models import onedmodel, multidmodel, multidmodel_uniform
 from pydream.examples.corm.example_sample_corm_with_dream import likelihood as corm_like
 from pydream.examples.corm.example_sample_corm_with_dream import run_kwargs as corm_kwargs
-from pydream.examples.mixturemodel.mixturemodel import run_kwargs as mix_kwargs
 from pydream.examples.mixturemodel.mixturemodel import likelihood as mix_like
-from pydream.examples.ndim_gaussian.dream_ex_ndim_gaussian import run_kwargs as ndimgauss_kwargs
+from pydream.examples.mixturemodel.mixturemodel import run_kwargs as mix_kwargs
 from pydream.examples.ndim_gaussian.dream_ex_ndim_gaussian import likelihood as ndimgauss_like
-from pydream.examples.robertson.example_sample_robertson_with_dream import run_kwargs as robertson_kwargs
+from pydream.examples.ndim_gaussian.dream_ex_ndim_gaussian import run_kwargs as ndimgauss_kwargs
 from pydream.examples.robertson.example_sample_robertson_with_dream import likelihood as robertson_like
-from pydream.examples.robertson_nopysb.example_sample_robertson_nopysb_with_dream import run_kwargs as rob_nop_kwargs
+from pydream.examples.robertson.example_sample_robertson_with_dream import run_kwargs as robertson_kwargs
 from pydream.examples.robertson_nopysb.example_sample_robertson_nopysb_with_dream import likelihood as rob_nop_like
+from pydream.examples.robertson_nopysb.example_sample_robertson_nopysb_with_dream import run_kwargs as rob_nop_kwargs
+from pydream.model import Model
+from pydream.tests.test_models import multidmodel, multidmodel_uniform, onedmodel
 
-import numbers
 
 class Test_Dream_Initialization(unittest.TestCase):
-    
+
     def test_fail_with_one_chain(self):
         """Test that DREAM fails if run with only one chain."""
         self.param, self.like = onedmodel()
         self.assertRaisesRegex(Exception, 'Dream should be run with at least ', run_dream, self.param, self.like, nchains=1)
-    
+
     def test_total_var_dimension_init(self):
         """Test that DREAM correctly identifies the total number of dimensions in all sampled parameters for a few test cases."""
         self.param, self.like = onedmodel()
         model = Model(likelihood=self.like, sampled_parameters=self.param)
         step = Dream(model=model, variables=self.param)
         self.assertEqual(step.total_var_dimension, 1)
-        
+
         self.param, self.like = multidmodel()
         model = Model(likelihood=self.like, sampled_parameters=self.param)
         step = Dream(model=model, variables=self.param)
         self.assertEqual(step.total_var_dimension, 4)
 
 class Test_Dream_Algorithm_Components(unittest.TestCase):
-    
+
     def test_gamma_unityfraction(self):
         """Test that gamma value is set to 1 the fraction of times indicated by the p_gamma_unity DREAM parameter."""
         self.param, self.like = onedmodel()
@@ -63,7 +64,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
                n_unity_choices += 1
         emp_frac = n_unity_choices/10000.0
         self.assertAlmostEqual(emp_frac, fraction, places=1)
-    
+
     def test_gamma_array(self):
         """Test assigned value of gamma array matches for test data."""
         true_gamma_array = np.array([[1.683, 1.19, .972, .841, .753]])
@@ -73,7 +74,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         for d_prime in range(1, dream.total_var_dimension+1):
             for n_DEpair in range(1, 6):
                 self.assertAlmostEqual(true_gamma_array[d_prime-1][n_DEpair-1], dream.set_gamma(DEpairs=n_DEpair, snooker_choice=False, gamma_level_choice=1, d_prime=d_prime), places=3)
-    
+
     def test_gamma_snooker_choice(self):
         """Test that when a snooker move is made, gamma is set to a random value between 1.2 and 2.2."""
         self.param, self.like = onedmodel()
@@ -81,7 +82,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         step = Dream(model=model)
         self.assertGreaterEqual(step.set_gamma(DEpairs=1, snooker_choice=True, gamma_level_choice=1, d_prime=3), 1.2)
         self.assertLess(step.set_gamma(DEpairs=1, snooker_choice=True, gamma_level_choice=1, d_prime=3), 2.2)
-    
+
     def test_snooker_fraction(self):
         """Test that the fraction of snooker moves corresponds to the snooker parameter."""
         self.param, self.like = onedmodel()
@@ -91,11 +92,11 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         fraction = step.snooker
         for iteration in range(10000):
            choice = step.set_snooker()
-           if choice == True:
+           if choice:
                n_snooker_choices += 1
         emp_frac = n_snooker_choices/10000.0
-        self.assertAlmostEqual(emp_frac, fraction, places=1)   
-        
+        self.assertAlmostEqual(emp_frac, fraction, places=1)
+
     def test_CR_fraction(self):
         """Test that the crossover values chosen match with the crossover probability values for test data."""
         self.param, self.like = onedmodel()
@@ -120,7 +121,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         self.assertAlmostEqual(emp_frac1, crossoverprobs[0], places=1)
         self.assertAlmostEqual(emp_frac2, crossoverprobs[1], places=1)
         self.assertAlmostEqual(emp_frac3, crossoverprobs[2], places=1)
-    
+
     def test_DEpair_selec(self):
         """Test that fraction for selected DEpair value is consistent with number of specified DEPair value."""
         self.param, self.like = onedmodel()
@@ -146,7 +147,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         self.assertAlmostEqual(emp_frac1, .3, places=1)
         self.assertAlmostEqual(emp_frac2, .3, places=1)
         self.assertAlmostEqual(emp_frac3, .3, places=1)
-    
+
     def test_prior_draw(self):
         """Test random draw from prior for normally distributed priors in test models."""
         self.param, self.like = onedmodel()
@@ -176,7 +177,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         sampled_chains = np.array(sampled_chains)
         chains_added_to_history = np.array(chains_added_to_history)
         self.assertIs(np.array_equal(chains_added_to_history[chains_added_to_history[:,0].argsort()], sampled_chains[sampled_chains[:,0].argsort()]), True)
-    
+
     def test_chain_sampling_multidim_model(self):
         """Test that sampling from DREAM history for multi-dimensional model when the history is known matches with expected possible samples."""
         self.params, self.like = multidmodel()
@@ -192,12 +193,12 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
             end = start+dream.total_var_dimension
             chain = dream.draw_from_prior(model.sampled_parameters)
             pydream.Dream_shared_vars.history[start:end] = chain
-            chains_added_to_history.append(chain)       
+            chains_added_to_history.append(chain)
         sampled_chains = dream.sample_from_history(nseedchains=2, DEpairs=1, ndimensions=dream.total_var_dimension)
         sampled_chains = np.array(sampled_chains)
         chains_added_to_history = np.array(chains_added_to_history)
         self.assertIs(np.array_equal(chains_added_to_history[chains_added_to_history[:,0].argsort()], sampled_chains[sampled_chains[:,0].argsort()]), True)
-    
+
     def test_proposal_generation_nosnooker_CR1(self):
         """Test proposal generation without a snooker update with a single or multiple proposed points and a crossover value of 1 gives all dimensions changed on average as expected."""
         self.param, self.like = multidmodel()
@@ -232,7 +233,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
                         dims_kept += 1
         frac_kept = dims_kept/(step.total_var_dimension*1000.0*5)
         self.assertAlmostEqual(frac_kept, 0, places=1)
-    
+
     def test_proposal_generation_nosnooker_CR33(self):
         """Test proposal generation without a snooker update with a single or multiple proposed points and a crossover value of .33 gives 1/3 of all dimensions changed on average as expected."""
         self.param, self.like = multidmodel()
@@ -256,7 +257,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         frac_kept = dims_kept/(step.total_var_dimension*100000.0)
         self.assertAlmostEqual(frac_kept, 1-.33, places=1)
         dims_kept = 0
-        for iteration in range(10000): 
+        for iteration in range(10000):
             proposed_pts = step.generate_proposal_points(n_proposed_pts=5, q0=q0, CR=.33, DEpairs=1, gamma_level=1, snooker=False)
             if iteration == 1:
                 self.assertEqual(len(proposed_pts), 5)
@@ -267,7 +268,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
                         dims_kept += 1
         frac_kept = dims_kept/(step.total_var_dimension*10000.0*5)
         self.assertAlmostEqual(frac_kept, 1-.33, places=1)
-    
+
     def test_proposal_generation_nosnooker_CR66(self):
         """Test proposal generation without a snooker update with a single or multiple proposed points and a crossover value of 2/3 gives 2/3 of all dimensions changed on average as expected."""
         self.param, self.like = multidmodel()
@@ -291,7 +292,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         frac_kept = dims_kept/(step.total_var_dimension*100000.0)
         self.assertAlmostEqual(frac_kept, 1-.66, places=1)
         dims_kept = 0
-        for iteration in range(10000): 
+        for iteration in range(10000):
             proposed_pts = step.generate_proposal_points(n_proposed_pts=5, q0=q0, CR=.66, DEpairs=1, gamma_level=1, snooker=False)
             if iteration == 1:
                 self.assertEqual(len(proposed_pts), 5)
@@ -302,7 +303,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
                         dims_kept += 1
         frac_kept = dims_kept/(step.total_var_dimension*10000.0*5)
         self.assertAlmostEqual(frac_kept, 1-.66, places=1)
-    
+
     def test_proposal_generation_snooker(self):
         """Test that proposal generation with a snooker update returns values of the expected shape."""
         self.param, self.like = multidmodel()
@@ -318,7 +319,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         self.assertEqual(len(proposed_pt), step.total_var_dimension)
         proposed_pts, snooker_logp, z = step.generate_proposal_points(n_proposed_pts=5, q0=q0, CR=1, DEpairs=1, gamma_level=1, snooker=True)
         self.assertEqual(len(proposed_pts), 5)
-    
+
     def test_multitry_logp_eval(self):
         """Test that evaluation of multiple trials either in parallel or not matches with known logp values."""
         self.param, self.like = multidmodel()
@@ -335,12 +336,12 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
             correct_loglikes.append(like)
         self.assertEqual(np.array_equal(logpriors, np.array(correct_logpriors)), True)
         self.assertEqual(np.array_equal(loglikes, np.array(correct_loglikes)), True)
-        
+
         logpriors, loglikes = step.mt_evaluate_logps(parallel=True, multitry=3, proposed_pts=proposed_pts, pfunc=logp)
 
         self.assertEqual(np.array_equal(logpriors, np.array(correct_logpriors)), True)
         self.assertEqual(np.array_equal(loglikes, np.array(correct_loglikes)), True)
-    
+
     def test_multitry_proposal_selection(self):
         """Test that multiple trial proposal selection matches expectated choice with test logp data."""
         self.param, self.like = multidmodel()
@@ -352,7 +353,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         for iteration in range(3):
             q_proposal, q_logp, noT_logp, noT_loglike, q_prior= step.mt_choose_proposal_pt(logpriors, loglikes, proposed_pts, T=1)
             self.assertEqual(np.array_equal(q_proposal, proposed_pts[0]), True)
-    
+
     def test_crossover_prob_estimation(self):
         """Test that crossover probabilities are updated as expected when changing or not changing parameter locations and giving points that give a greater jump distance."""
         self.param, self.like = multidmodel()
@@ -392,7 +393,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         for i, q_new in zip(list(range(5)), [np.array([15]), np.array([17]), np.array([19]), np.array([21]), np.array([23])]):
             new_cr_probs = dream.estimate_crossover_probabilities(dream.total_var_dimension, q0, q_new, CR_vals[1])
         self.assertEqual(np.array_equal(new_cr_probs, old_cr_probs), False)
-        
+
     def test_history_recording_simple_model(self):
         """Test that history in memory matches with that recorded for test one-dimensional model."""
         self.param, self.like = onedmodel()
@@ -411,7 +412,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
-        
+
     def test_history_recording_multidim_model(self):
         """Test that history in memory matches with that recorded for test multi-dimensional model."""
         self.param, self.like = multidmodel()
@@ -430,7 +431,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
-     
+
     def test_history_saving_to_disc_sanitycheck(self):
         """Test that history when saved to disc and reloaded matches."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -442,7 +443,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
             step.save_history_to_disc(history, prefix)
             history_saved = np.load(prefix + 'DREAM_chain_history.npy')
             self.assertIs(np.array_equal(history, history_saved), True)
-    
+
     def test_history_file_loading(self):
         """Test that when a history file is provided it is loaded and appended to the new history."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -459,14 +460,14 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
             new_history_seed = new_history[:len(old_history.flatten())]
             new_history_seed_reshaped = new_history_seed.reshape(old_history.shape)
             self.assertIs(np.array_equal(old_history, new_history_seed_reshaped), True)
-            
+
             added_history = new_history[len(old_history.flatten())::]
             sorted_history = np.sort(added_history)
             sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-    
+
             for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
                 self.assertEqual(sampled_param, history_param)
-        
+
     def test_crossover_file_loading(self):
         """Test that when a crossover file is loaded the crossover values are set to the file values and not adapted."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -478,9 +479,9 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
             model = Model(self.like, self.param)
             dream = Dream(model=model, crossover_file=cr_file, save_history=True, model_name=prefix_save[:-1])
             self.assertTrue(np.array_equal(dream.CR_probabilities, old_crossovervals))
-            
+
             sampled_vals, logps = run_dream(self.param, self.like, niterations=100, nchains=3, crossover_file=cr_file, model_name=prefix_save[:-1], save_history=True, verbose=False)
-            
+
             crossover_vals_after_sampling = np.load(prefix_save+'DREAM_chain_adapted_crossoverprob.npy')
             self.assertIs(np.array_equal(crossover_vals_after_sampling, old_crossovervals), True)
 
@@ -611,7 +612,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
 
         self.assertTrue(isinstance(qnew, np.ndarray))
         self.assertTrue((logprior_new + loglike_new) >= -400)
-    
+
 class Test_Dream_Full_Algorithm(unittest.TestCase):
 
     def test_history_correct_after_sampling_simple_model(self):
@@ -627,11 +628,11 @@ class Test_Dream_Full_Algorithm(unittest.TestCase):
             history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
             sorted_history = np.sort(history_no_seedchains)
             sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-    
+
             for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
                 self.assertEqual(sampled_param, history_param)
-            
-        
+
+
     def test_history_correct_after_sampling_multidim_model(self):
         """Test that the history saved matches with the returned sampled parameter values for a multi-dimensional test model."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -641,13 +642,13 @@ class Test_Dream_Full_Algorithm(unittest.TestCase):
             step = Dream(model=model, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False)
             sampled_params, logps = run_dream(self.param, self.like, niterations=10, nchains=5, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False, verbose=False)
             history = np.load(prefix+'DREAM_chain_history.npy')
-    
+
             self.assertEqual(len(history), step.total_var_dimension*((10*5/step.history_thin)+step.nseedchains))
             history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
-    
+
             sorted_history = np.sort(history_no_seedchains)
             sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-    
+
             for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
                 self.assertEqual(sampled_param, history_param)
 
@@ -658,8 +659,6 @@ class Test_Dream_Full_Algorithm(unittest.TestCase):
             prefix = os.path.join(tmpdir, 'test_boundaries_')
             self.param, self.like = multidmodel_uniform()
             model = Model(self.like, self.param)
-            step = Dream(model=model, save_history=True, history_thin=1, model_name=prefix[:-1],
-                         adapt_crossover=False, hardboundaries=True, nverbose=10)
             sampled_params, logps = run_dream(self.param, self.like, niterations=1000, nchains=5, save_history=True,
                                               history_thin=1, model_name=prefix[:-1], adapt_crossover=False,
                                               verbose=True, hardboundaries=True, nverbose=10)
@@ -669,13 +668,13 @@ class Test_Dream_Full_Algorithm(unittest.TestCase):
             for var in variables:
                 interval = var.interval()
                 dim += var.dsize
-    
+
             lowerbound = interval[0]
             upperbound = interval[1]
-    
+
             npoints = int(len(history)/float(dim))
             reshaped_history = np.reshape(history, (npoints, dim))
-    
+
             self.assertFalse((reshaped_history<lowerbound).any())
             self.assertFalse((reshaped_history>upperbound).any())
 
@@ -691,7 +690,7 @@ class Test_DREAM_examples(unittest.TestCase):
 
         valid_start = np.array([-2.5, 0.4, -2.1, 0.1, -0.3, -2.7, -0.7, 2.0, 0.0, -0.6, 2.0, -0.4])
         corm_kwargs['start'] = [valid_start] * nchains
-        
+
         #Check likelihood fxn works
         logp = corm_like(valid_start)
         print(f"Diagnostic CORM logp: {logp}")
@@ -801,4 +800,4 @@ class Test_DREAM_examples(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    
+

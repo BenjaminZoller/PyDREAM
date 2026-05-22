@@ -7,29 +7,31 @@ Created on Tue Jun  7 14:58:09 2016
 #Parameters defined for simple example statistical models for testing DREAM
 """
 
-from pydream.parameters import SampledParam
-from scipy.stats import norm, uniform
 import numpy as np
+from scipy.stats import norm, uniform
+
+from pydream.parameters import SampledParam
+
 
 def onedmodel():
     """One dimensional model with normal prior."""
-    
+
     mu = -2
     sd = 3
     x = SampledParam(norm, loc=mu, scale=sd)
-    like = simple_likelihood   
-    
+    like = simple_likelihood
+
     return [x], like
 
 def multidmodel():
     """Multidimensional model with normal prior."""
-    
+
     mu = np.array([-6.6, 3, 1.0, -.12])
     sd = np.array([.13, 5, .9, 1.0])
-    
+
     x = SampledParam(norm, loc=mu, scale=sd)
     like = simple_likelihood
-    
+
     return [x], like
 
 def multidmodel_uniform():
@@ -46,5 +48,5 @@ def multidmodel_uniform():
 
 def simple_likelihood(param):
     """Flat likelihood."""
-    
+
     return np.sum(param + 3)

@@ -5,7 +5,7 @@ Created on Mon Dec  8 19:56:12 2014
 @author: Erin
 """
 
-from pysb import Model, Monomer, Parameter, Initial, Rule, Observable
+from pysb import Initial, Model, Monomer, Observable, Parameter, Rule
 from pysb.macros import bind, bind_complex, catalyze
 
 Model()
@@ -37,8 +37,8 @@ Initial(PGG(), PGG_0)
 
 #Rates for AA and COX2 interactions at catalytic site
 Parameter('kf_AA_cat1', 1000.0)
-Parameter('kr_AA_cat1', 830) 
-Parameter('kcat_AA1', 1.3) 
+Parameter('kr_AA_cat1', 830)
+Parameter('kcat_AA1', 1.3)
 Parameter('kf_AA_cat2', 1.0e-3)
 Parameter('kr_AA_cat2', 3.3e-6)
 Parameter('kcat_AA2', 2.3)
@@ -48,8 +48,8 @@ Parameter('kcat_AA3', 1.3)
 
 #Rates for 2-AG and COX2 interactions at catalytic site
 Parameter('kf_AG_cat1', 1000.0)
-Parameter('kr_AG_cat1', 760.0) 
-Parameter('kcat_AG1', 1.2) 
+Parameter('kr_AG_cat1', 760.0)
+Parameter('kcat_AG1', 1.2)
 Parameter('kf_AG_cat2', 1.0e-3)
 Parameter('kr_AG_cat2', 4.8e-4)
 Parameter('kf_AG_cat3', 1.0e-3)
@@ -70,7 +70,7 @@ Parameter('kr_AG_allo1', 1.0e5)
 Parameter('kf_AG_allo2', 1000.0)
 Parameter('kr_AG_allo2', 400.0)
 Parameter('kf_AG_allo3', 1000.0)
-Parameter('kr_AG_allo3', 63000.0) 
+Parameter('kr_AG_allo3', 63000.0)
 
 #Defining allowed reaction rules
 

@@ -11,16 +11,17 @@ Created on Tue Dec  9 15:26:46 2014
 @author: Erin
 """
 
-from pydream.core import run_dream
-from pysb.simulator import ScipyOdeSimulator
-import numpy as np
-from pydream.parameters import SampledParam
-from scipy.stats import norm, uniform
-import os
 import inspect
-from pydream.convergence import Gelman_Rubin
+import os
 
+import numpy as np
 from pysb.examples.robertson import model
+from pysb.simulator import ScipyOdeSimulator
+from scipy.stats import norm, uniform
+
+from pydream.convergence import Gelman_Rubin
+from pydream.core import run_dream
+from pydream.parameters import SampledParam
 
 #Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
 tspan = np.linspace(0,40)
@@ -39,33 +40,33 @@ like_ctot = norm(loc=exp_data_ctot, scale=exp_data_sd_ctot)
 #Create lists of sampled pysb parameter names to use for subbing in parameter values in likelihood function.
 pysb_sampled_parameter_names = [param.name for param in model.parameters_rules()]
 
-#Define likelihood function to generate simulated data that corresponds to experimental time points.  
+#Define likelihood function to generate simulated data that corresponds to experimental time points.
 #This function should take as input a parameter vector (parameter values are in the order dictated by first argument to run_dream function below).
 #The function returns a log probability value for the parameter vector given the experimental data.
 
-def likelihood(parameter_vector):    
-    
+def likelihood(parameter_vector):
+
     param_dict = {pname: 10**pvalue for pname, pvalue in zip(pysb_sampled_parameter_names, parameter_vector)}
-    
+
     try:
         #Simulate experimentally measured Ctotal values.
         res = simulator.run(param_values=param_dict)
-        
+
         #Calculate log probability contribution from simulated experimental values.
         logp_ctotal = np.sum(like_ctot.logpdf(res.observables['C_total']))
     except Exception:
         #If model simulation failed due to integrator errors, return a log probability of -inf.
         return -np.inf
-    
+
     #If model simulation failed due to integrator errors, return a log probability of -inf.
     if np.isnan(logp_ctotal):
         logp_ctotal = -np.inf
-      
+
     return logp_ctotal
 
 
 # Add vector of PySB rate parameters to be sampled as unobserved random variables to DREAM with uniform priors.
-  
+
 original_params = np.log10([param.value for param in model.parameters_rules()])
 #Set upper and lower limits for uniform prior to be 3 orders of magnitude above and below original parameter values.
 lower_limits   = original_params - 3
@@ -83,7 +84,7 @@ if __name__ == '__main__':
 
     #Run DREAM sampling.  Documentation of DREAM options is in Dream.py.
     sampled_params, log_ps = run_dream(sampled_parameter_names, likelihood, niterations=niterations, nchains=nchains, multitry=False, gamma_levels=4, adapt_gamma=True, history_thin=1, model_name='robertson_dreamzs_5chain', verbose=True)
-    
+
     #Save sampling output (sampled parameter values and their corresponding logps).
     for chain in range(len(sampled_params)):
         np.save('robertson_dreamzs_5chain_sampled_params_chain_'+str(chain)+'_'+str(total_iterations), sampled_params[chain])

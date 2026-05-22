@@ -31,14 +31,16 @@ y3' =  3.0e7 * y2^2
 
 """
 
-from pydream.core import run_dream
-import numpy as np
-from pydream.parameters import SampledParam
-from scipy.stats import norm, uniform
-import os
 import inspect
-from pydream.convergence import Gelman_Rubin
+import os
+
+import numpy as np
 from scipy.integrate import odeint
+from scipy.stats import norm, uniform
+
+from pydream.convergence import Gelman_Rubin
+from pydream.core import run_dream
+from pydream.parameters import SampledParam
 
 #Define time points at which to simulate.  Simulation timespan should match experimental data.
 tspan = np.linspace(0,40)
@@ -70,7 +72,7 @@ def odefunc(y, t, params):
 #Define y0, starting amounts of A, B, and C
 y0 = [1.0, 0.0, 0.0]
 
-#Define likelihood function to generate simulated data that corresponds to experimental time points.  
+#Define likelihood function to generate simulated data that corresponds to experimental time points.
 #This function should take as input a parameter vector
 # (parameter values are in the order dictated by first argument to run_dream function below).
 #The function returns a log probability value for the parameter vector given the experimental data.
@@ -85,18 +87,18 @@ def likelihood(parameter_vector):
     cout = yout[:, 2]
 
     #Calculate log probability contribution given simulated experimental values.
-    
+
     logp_ctotal = np.sum(like_ctot.logpdf(cout))
-    
+
     #If simulation failed due to integrator errors, return a log probability of -inf.
     if np.isnan(logp_ctotal):
         logp_ctotal = -np.inf
-      
+
     return logp_ctotal
 
 
 # Add vector of rate parameters to be sampled as unobserved random variables in DREAM with uniform priors.
-  
+
 original_params = np.log10([.04, 3.0e7, 1.0e4])
 
 #Set upper and lower limits for uniform prior to be 3 orders of magnitude above and below original parameter values.
@@ -116,7 +118,7 @@ if __name__ == '__main__':
 
     #Run DREAM sampling.  Documentation of DREAM options is in Dream.py.
     sampled_params, log_ps = run_dream(sampled_parameter_names, likelihood, niterations=niterations, nchains=nchains, multitry=False, gamma_levels=4, adapt_gamma=True, history_thin=1, model_name='robertson_nopysb_dreamzs_5chain', verbose=True)
-    
+
     #Save sampling output (sampled parameter values and their corresponding logps).
     for chain in range(len(sampled_params)):
         np.save('robertson_nopysb_dreamzs_5chain_sampled_params_chain_'+str(chain)+'_'+str(total_iterations), sampled_params[chain])

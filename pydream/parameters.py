@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class SampledParam:
     """A SciPy-based parameter prior class.
 
@@ -44,7 +45,7 @@ class SampledParam:
         logp = np.sum(self.dist.logpdf(q0))
 
         return logp
-    
+
 class FlatParam(SampledParam):
     """A Flat parameter class (returns 0 at all locations).
 
@@ -57,7 +58,7 @@ class FlatParam(SampledParam):
 
     def __init__(self, test_value):
         self.dsize = test_value.size
-        
+
     def prior(self, q0):
         return 0
 
@@ -67,4 +68,3 @@ class FlatParam(SampledParam):
         lower = [-np.inf] * self.dsize
         upper = [np.inf] * self.dsize
         return [lower, upper]
-        

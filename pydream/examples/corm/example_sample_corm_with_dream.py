@@ -11,14 +11,16 @@ Created on Tue Dec  9 15:26:46 2014
 @author: Erin
 """
 
-from pydream.core import run_dream
-from pysb.simulator import ScipyOdeSimulator
-import numpy as np
-from pydream.parameters import SampledParam
-from pydream.convergence import Gelman_Rubin
-from scipy.stats import norm
 import inspect
 import os.path
+
+import numpy as np
+from pysb.simulator import ScipyOdeSimulator
+from scipy.stats import norm
+
+from pydream.convergence import Gelman_Rubin
+from pydream.core import run_dream
+from pydream.parameters import SampledParam
 
 from .corm import model as cox2_model
 
