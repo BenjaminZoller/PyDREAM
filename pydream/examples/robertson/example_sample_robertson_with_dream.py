@@ -82,7 +82,18 @@ nchains = 5
 if __name__ == '__main__':
 
     #Run DREAM sampling.  Documentation of DREAM options is in Dream.py.
-    sampled_params, log_ps = run_dream(sampled_parameter_names, likelihood, niterations=niterations, nchains=nchains, multitry=False, gamma_levels=4, adapt_gamma=True, history_thin=1, model_name='robertson_dreamzs_5chain', verbose=True)
+    sampled_params, log_ps = run_dream(
+        sampled_parameter_names,
+        likelihood,
+        niterations=niterations,
+        nchains=nchains,
+        multitry=False,
+        gamma_levels=4,
+        adapt_gamma=True,
+        history_thin=1,
+        model_name='robertson_dreamzs_5chain',
+        verbose=True
+    )
 
     #Save sampling output (sampled parameter values and their corresponding logps).
     for chain in range(len(sampled_params)):
@@ -101,9 +112,20 @@ if __name__ == '__main__':
         while not converged:
             total_iterations += niterations
 
-            sampled_params, log_ps = run_dream(sampled_parameter_names, likelihood, start=starts, niterations=niterations,
-                                               nchains=nchains, multitry=False, gamma_levels=4, adapt_gamma=True,
-                                               history_thin=1, model_name='robertson_dreamzs_5chain', verbose=True, restart=True)
+            sampled_params, log_ps = run_dream(
+                sampled_parameter_names,
+                likelihood,
+                start=starts,
+                niterations=niterations,
+                nchains=nchains,
+                multitry=False,
+                gamma_levels=4,
+                adapt_gamma=True,
+                history_thin=1,
+                model_name='robertson_dreamzs_5chain',
+                verbose=True,
+                restart=True
+            )
 
             for chain in range(len(sampled_params)):
                 np.save('robertson_dreamzs_5chain_sampled_params_chain_' + str(chain) + '_' + str(total_iterations),
@@ -126,8 +148,13 @@ if __name__ == '__main__':
 
         total_iterations = len(old_samples[0])
         burnin = total_iterations / 2
-        samples = np.concatenate((old_samples[0][burnin:, :], old_samples[1][burnin:, :], old_samples[2][burnin:, :],
-                                     old_samples[3][burnin:, :], old_samples[4][burnin:, :]))
+        samples = np.concatenate((
+            old_samples[0][burnin:, :],
+            old_samples[1][burnin:, :],
+            old_samples[2][burnin:, :],
+            old_samples[3][burnin:, :],
+            old_samples[4][burnin:, :]
+        ))
 
         ndims = len(old_samples[0][0])
         colors = sns.color_palette(n_colors=ndims)
@@ -140,4 +167,15 @@ if __name__ == '__main__':
         pass
 
 else:
-    run_kwargs = {'parameters':sampled_parameter_names, 'likelihood':likelihood, 'niterations':10000, 'nchains':nchains, 'multitry':False, 'gamma_levels':4, 'adapt_gamma':True, 'history_thin':1, 'model_name':'robertson_dreamzs_5chain', 'verbose':True}
+    run_kwargs = {
+        'parameters': sampled_parameter_names,
+        'likelihood': likelihood,
+        'niterations': 10000,
+        'nchains': nchains,
+        'multitry': False,
+        'gamma_levels': 4,
+        'adapt_gamma': True,
+        'history_thin': 1,
+        'model_name': 'robertson_dreamzs_5chain',
+        'verbose': True
+    }

@@ -1,86 +1,23 @@
-I001 [*] Import block is un-sorted or un-formatted
-  --> pydream/Dream.py:3:1
+E501 Line too long (208 > 150)
+  --> pydream/Dream.py:17:151
    |
- 1 |   # -*- coding: utf-8 -*-
- 2 |
- 3 | / import multiprocessing as mp
- 4 | | import random
- 5 | | import traceback
- 6 | | from datetime import datetime
- 7 | | from multiprocessing import pool
- 8 | | from multiprocessing import context
- 9 | | from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
-10 | |
-11 | | import numpy as np
-12 | |
-13 | | from . import Dream_shared_vars
-   | |_______________________________^
+15 | …
+16 | …
+17 | …REAM\ :sub:`(ZS)`\  and high-performance computing. Water Resources Research 48, W01526 (2012).
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 | …
+19 | …
    |
-help: Organize imports
 
-I001 [*] Import block is un-sorted or un-formatted
-  --> pydream/examples/corm/example_sample_corm_with_dream.py:8:1
-   |
- 6 |   """
- 7 |
- 8 | / import inspect
- 9 | | import os.path
-10 | |
-11 | | import numpy as np
-12 | | from pydream.convergence import Gelman_Rubin
-13 | | from pydream.core import run_dream
-14 | | from pydream.parameters import SampledParam
-15 | | from pysb.simulator import ScipyOdeSimulator
-16 | | from scipy.stats import norm
-17 | |
-18 | | from .corm import model as cox2_model
-   | |_____________________________________^
-19 |
-20 |   pydream_path = os.path.dirname(inspect.getfile(run_dream))
-   |
-help: Organize imports
+E501 Line too long (186 > 150)
+   --> pydream/core.py:308:151
+    |
+306 | …
+307 | …
+308 | …e.total_var_dimension)+(step_instance.nseedchains*step_instance.total_var_dimension)
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+309 | …
+310 | …
+    |
 
-I001 [*] Import block is un-sorted or un-formatted
-  --> pydream/examples/robertson/example_sample_robertson_with_dream.py:8:1
-   |
- 6 |   """
- 7 |
- 8 | / import inspect
- 9 | | import os
-10 | |
-11 | | import numpy as np
-12 | | from pydream.convergence import Gelman_Rubin
-13 | | from pydream.core import run_dream
-14 | | from pydream.parameters import SampledParam
-15 | | from pysb.integrate import Solver
-16 | | from scipy.stats import norm, uniform
-17 | |
-18 | | from pysb.examples.robertson import model
-   | |_________________________________________^
-19 |
-20 |   #Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
-   |
-help: Organize imports
-
-I001 [*] Import block is un-sorted or un-formatted
-  --> pydream/examples/robertson_nopysb/example_sample_robertson_nopysb_with_dream.py:27:1
-   |
-25 |   """
-26 |
-27 | / import inspect
-28 | | import os
-29 | |
-30 | | import numpy as np
-31 | | from pydream.convergence import Gelman_Rubin
-32 | | from pydream.core import run_dream
-33 | | from pydream.parameters import SampledParam
-34 | | from scipy.integrate import odeint
-35 | | from scipy.stats import norm, uniform
-   | |_____________________________________^
-36 |
-37 |   #Define time points at which to simulate.  Simulation timespan should match experimental data.
-   |
-help: Organize imports
-
-Found 4 errors.
-[*] 4 fixable with the `--fix` option.
+Found 2 errors.
