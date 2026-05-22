@@ -10,7 +10,7 @@ Welcome to PyDREAM's documentation!
 This provides reasonable defaults, but a variety of options are available for customizing DREAM.
 These can be passed as keyword arguments to :py:func:`pydream.core.run_dream`.  See the :py:class:`pydream.Dream.Dream` class for a list of options.
 
-Examples are available in the `examples <http://github.com/LoLab-VU/PyDREAM/tree/master/pydream/examples>`_ directory of the GitHub repo.
+Examples are available in the `examples <https://github.com/BenjaminZoller/PyDREAM/tree/main/pydream/examples>`_ directory of the GitHub repo.
 
 Contents:
 
@@ -28,4 +28,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

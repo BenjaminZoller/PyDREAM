@@ -32,6 +32,7 @@ Homepage = "https://github.com/BenjaminZoller/PyDREAM"
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
+docs = ["sphinx", "numpydoc"]
 
 [tool.setuptools]
 packages = ["pydream"]
