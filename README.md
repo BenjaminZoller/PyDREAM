@@ -4,7 +4,7 @@ A Python implementation of the MT-DREAM(ZS) algorithm presented in [Laloy and Vr
 
 ## Authorship and Maintenance
 
-PyDREAM was originally developed by Erin Shockley, Ortega, and other contributors.
+PyDREAM was originally developed by Erin Shockley, Oscar Ortega, and other contributors.
 It is currently maintained and being modernized by Benjamin Zoller, with AI assistance from Google's Gemini.
 
 For example usage, see the `examples` folder. Two of the examples, CORM and Robertson, require the Python modeling framework PySB.
