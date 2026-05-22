@@ -8,12 +8,13 @@ Created on Wed Apr  8 18:01:34 2015
 # An implementation of example 3 from MT-DREAM(ZS) original Matlab code.
 # Mixture Model
 
-import numpy as np
 import os
+
+import numpy as np
 import scipy.linalg
-from pydream.parameters import FlatParam
+
 from pydream.core import run_dream
-from pydream.convergence import  Gelman_Rubin
+from pydream.parameters import FlatParam
 
 log_F = np.array([-10.2880, -9.5949])
 
@@ -44,11 +45,11 @@ def likelihood(params):
     post = post/float(density)
     log_L = np.log(density) + maxll
     #print 'params: ',params,'log_L: ',log_L,'log_lh: ',log_lh,'maxll: ',maxll,'post: ',post,'density: ',density
-    
+
     return log_L
-    
+
 params = FlatParam(test_value=mean)
- 
+
 starts = [m[chain] for chain in range(3)]
 
 if __name__ == '__main__':
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     nchains=3
 
     sampled_params, log_ps = run_dream([params], likelihood, niterations=niterations, nchains=nchains, start=starts, start_random=False, save_history=True, history_file='mixturemodel_seed.npy', multitry=5, parallel=False)
-    
+
     for chain in range(len(sampled_params)):
         np.save('mixmod_mtdreamzs_3chain_sampled_params_chain_'+str(chain)+'_'+str(total_iterations), sampled_params[chain])
         np.save('mixmod_mtdreamzs_3chain_logps_chain_'+str(chain)+'_'+str(total_iterations), log_ps[chain])
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         colors = sns.color_palette(n_colors=ndims)
         for dim in range(ndims):
             fig = plt.figure()
-            sns.distplot(samples[:, dim], color=colors[dim])
+            sns.histplot(samples[:, dim], color=colors[dim], kde=True)
             fig.savefig('PyDREAM_example_MixtureModel_dimension_'+str(dim))
 
     except ImportError:
@@ -89,8 +90,3 @@ else:
     run_kwargs = {'parameters':params, 'likelihood':likelihood, 'niterations':50000, 'nchains':3, 'start':starts, 'start_random':False,\
                   'multitry':5, 'adapt_gamma':True, 'history_thin':1, 'model_name':'corm_dreamzs_5chain', 'verbose':True, \
                   'save_history':True, 'history_file':'mixturemodel_seed.npy', 'parallel':False}
-
-    
-    
-
-

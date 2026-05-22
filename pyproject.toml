@@ -32,6 +32,7 @@ Homepage = "https://github.com/BenjaminZoller/PyDREAM"
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
+docs = ["sphinx", "numpydoc"]
 
 [tool.setuptools]
 packages = ["pydream"]
@@ -55,9 +56,19 @@ show_missing = true
 
 [tool.ruff]
 target-version = "py311"
-line-length = 120
+line-length = 150
 
 [tool.ruff.lint]
 # Enable Pyflakes (F), pycodestyle (E, W), and isort (I)
 select = ["E", "F", "W", "I"]
-ignore = ["E501"] # Ignore strict line-length enforcement
+
+[tool.ruff.lint.isort]
+known-first-party = ["pydream"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 120
+
+[tool.ruff.lint.per-file-ignores]
+"pydream/examples/corm/corm.py" = ["F821"] # Ignore undefined names from PySB macro magic
+"pydream/tests/*" = ["E501"]
+"pydream/examples/*" = ["E501"]

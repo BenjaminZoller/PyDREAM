@@ -8,21 +8,24 @@ Created on Wed Apr  8 18:01:34 2015
 # An implementation of example 2 from MT-DREAM(ZS) original Matlab code. (see Laloy and Vrugt 2012)
 # 200 dimensional Gaussian distribution
 
-import numpy as np
 import os
-from pydream.parameters import FlatParam
+
+import numpy as np
+
+from pydream.convergence import Gelman_Rubin
 from pydream.core import run_dream
-from pydream.convergence import  Gelman_Rubin
+from pydream.parameters import FlatParam
+
 
 def Latin_hypercube(minn, maxn, N):
     y = np.random.rand(N, len(minn))
     x = np.zeros((N, len(minn)))
-    
+
     for j in range(len(minn)):
         idx = np.random.permutation(N)
         P = (idx - y[:,j])/N
         x[:,j] = minn[j] + P * (maxn[j] - minn[j])
-    
+
     return x
 
 
@@ -48,7 +51,7 @@ np.save('ndim_gaussian_seed.npy', m)
 
 def likelihood(param_vec):
     logp = log_F - .5 * np.sum(param_vec*np.dot(invC, param_vec))
-    
+
     return logp
 
 starts = [m[chain] for chain in range(3)]
@@ -63,7 +66,7 @@ if __name__ == '__main__':
     nchains = 3
 
     sampled_params, log_ps = run_dream([params], likelihood, niterations=niterations, nchains=nchains, start=starts, start_random=False, save_history=True, adapt_gamma=False, gamma_levels=1, tempering=False, history_file='ndim_gaussian_seed.npy', multitry=5, parallel=False, model_name='ndim_gaussian')
-    
+
     for chain in range(len(sampled_params)):
         np.save('ndimgauss_mtdreamzs_3chain_sampled_params_chain_'+str(chain)+'_'+str(total_iterations), sampled_params[chain])
         np.save('ndimgauss_mtdreamzs_3chain_logps_chain_'+str(chain)+'_'+str(total_iterations), log_ps[chain])
@@ -124,7 +127,7 @@ else:
 
     run_kwargs = {'parameters':[params], 'likelihood':likelihood, 'niterations':150000, 'nchains':3, 'start':starts, 'start_random':False, 'save_history':True, 'adapt_gamma':False, 'gamma_levels':1, 'tempering':False, 'history_file':'ndim_gaussian_seed.npy', 'multitry':5, 'parallel':False, 'model_name':'ndim_gaussian'}
 
-    
-    
+
+
 
 
