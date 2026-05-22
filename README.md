@@ -16,7 +16,7 @@ Documentation is available at Read the Docs.
 To install PyDREAM locally in editable mode along with its testing dependencies, run the following from the root of the repository:
 
 ```bash
-pip install -e .[test]
+pip install -e ".[test]"
 ```
 
 ## Testing
@@ -24,7 +24,7 @@ pip install -e .[test]
 PyDREAM uses `pytest` for unit testing. After installing the test dependencies, you can run the entire test suite simply by running:
 
 ```bash
-pytest
+pytest -vs
 ```
 
 To run the tests with code coverage reporting:

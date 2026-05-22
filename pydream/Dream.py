@@ -332,7 +332,7 @@ class Dream:
                 if run_snooker:
                     total_proposed_logp = q_logp + snooker_logp_prop
                     norm = np.linalg.norm(q0-z)
-                    snooker_current_logp = np.log(norm, where=norm != 0)*(self.total_var_dimension-1)
+                    snooker_current_logp = np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf
                     total_old_logp = self.last_logp + snooker_current_logp
                     
                     q_new = metrop_select(np.nan_to_num(total_proposed_logp - total_old_logp), q, q0)
@@ -389,10 +389,6 @@ class Dream:
                    self.gamma_probabilities = self.estimate_gamma_level_probs(self.total_var_dimension, q0, q_new, gamma_level)
             
             if self.iter == self.crossover_burnin:
-                #To ensure all chains use the same fitted shared probability values, wait for all parallel chains to reach end of burnin period before grabbing shared probabilities
-                with Dream_shared_vars.nchains.get_lock():
-                    Dream_shared_vars.nchains.value += 1 
-                    nchains_finished_burnin = Dream_shared_vars.nchains.value
                 
                 if self.adapt_gamma:
                     with Dream_shared_vars.gamma_level_probs.get_lock(), Dream_shared_vars.count.get_lock(), Dream_shared_vars.ngamma_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(), Dream_shared_vars.delta_m_gamma.get_lock():
@@ -406,11 +402,7 @@ class Dream:
                         else:
                             self.CR_probabilities = self.estimate_crossover_probabilities(self.total_var_dimension, q0, q_new, CR=1)
                 
-                while nchains_finished_burnin != self.nchains:
-                    time.sleep(30)
-                    with Dream_shared_vars.nchains.get_lock():
-                        nchains_finished_burnin = Dream_shared_vars.nchains.value    
-                time.sleep(10)
+                Dream_shared_vars.burnin_barrier.wait()
 
                 if self.adapt_gamma:
                     with Dream_shared_vars.gamma_level_probs.get_lock():
@@ -825,22 +817,22 @@ class Dream:
             
             #Orthogonal projection of chains_to_projected onto projection vector
             diff_chains_to_be_projected = [(chains_to_be_projected[point][0]-chains_to_be_projected[point][1]) for point in range(n_proposed_pts)]       
-            zP = np.nan_to_num(np.array([(np.sum(diff_chains_to_be_projected[point]*proj_vec_diff[point])/D[point] *proj_vec_diff[point]) for point in range(n_proposed_pts)]))
+            zP = np.nan_to_num(np.array([(np.sum(diff_chains_to_be_projected[point]*proj_vec_diff[point])/D[point] *proj_vec_diff[point]) if D[point] != 0 else np.zeros_like(proj_vec_diff[point]) for point in range(n_proposed_pts)]))
             dx = self.gamma*zP
             proposed_pts = [q0 + dx[point] for point in range(n_proposed_pts)]
             norms = [np.linalg.norm(proposed_pts[point] - sampled_history_pt[point]) for point in range(n_proposed_pts)]
-            snooker_logp = [np.log(norm, where= norm != 0)*(self.total_var_dimension-1) for norm in norms]
+            snooker_logp = [np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf for norm in norms]
 
         else:
             D = np.dot(proj_vec_diff, proj_vec_diff)
 
             #Orthogonal projection of chains_to_projected onto projection vector  
             diff_chains_to_be_projected = chains_to_be_projected[0]-chains_to_be_projected[1]
-            zP = np.nan_to_num(np.array([np.sum(np.divide((diff_chains_to_be_projected*proj_vec_diff), D, where= D != 0))]))*proj_vec_diff
+            zP = np.nan_to_num(np.array([np.sum((diff_chains_to_be_projected*proj_vec_diff) / D if D != 0 else 0.0)]))*proj_vec_diff
             dx = self.gamma*zP
             proposed_pts = q0 + dx
             norm = np.linalg.norm(proposed_pts-sampled_history_pt)
-            snooker_logp = np.log(norm, where= norm != 0)*(self.total_var_dimension-1)
+            snooker_logp = np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf
         
         return proposed_pts, snooker_logp, sampled_history_pt
     
