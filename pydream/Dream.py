@@ -13,19 +13,24 @@ from . import Dream_shared_vars
 
 class Dream:
     r"""An implementation of the MT-DREAM\ :sub:`(ZS)`\  algorithm introduced in:
-        Laloy, E. & Vrugt, J. A. High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing.
+        Laloy, E. & Vrugt, J. A.
+        High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing.
         Water Resources Research 48, W01526 (2012).
 
     Parameters
     ----------
-    variables : iterable of instance(s) of SampledParam class
-        Model parameters to be sampled with specified prior.
-    nseedchains : int
-        Number of draws with which to initialize the DREAM history.  Default = 10 * n dimensions
+    model : Model
+        A wrapper model instance containing the likelihood and prior parameter information.
+    variables : iterable of SampledParam, optional
+        Model parameters to be sampled with specified prior. If None, derived from the model.
+    nseedchains : int, optional
+        Number of draws with which to initialize the DREAM history. Default is 10 * n dimensions.
     nCR : int
-        Number of crossover values to sample from during run (and to fit during crossover burn-in period).  Default = 3
+        Number of crossover values to sample from during run (and to fit during crossover burn-in period). Default is 3.
     adapt_crossover : bool
         Whether to adapt crossover values during the burn-in period.  Default is to adapt.
+    adapt_gamma : bool
+        Whether to adapt gamma values. Default is False.
     crossover_burnin : int
         Number of iterations to fit the crossover values.  Defaults to 10% of total iterations.
     DEpairs : int
@@ -63,7 +68,7 @@ class Dream:
         Whether to relect point back into bounds of hard prior (i.e., if using a uniform prior, reflect points outside
         of boundaries back in, so you don't waste time looking at points with logpdf = -inf).
     mp_context : multiprocessing context or None.
-        Method used to to start the processes. If it's None, the default context, which depends in Python version and OS, is used.
+        Method used to start the processes. If it's None, the default context, which depends on Python version and OS, is used.
         For more information please check: https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     """
 
@@ -98,7 +103,10 @@ class Dream:
     ) -> None:
 
         # Set Dream multiprocessing context
-        self.mp_context = mp_context
+        if isinstance(mp_context, str) or mp_context is None:
+            self.mp_context = mp.get_context(mp_context)
+        else:
+            self.mp_context = mp_context
         # Set model and variable attributes (if no variables passed, set to all parameters)
         self.model = model
         self.model_name = model_name
@@ -157,7 +165,7 @@ class Dream:
 
         self.ngamma = gamma_levels
         self.njoint_cr_gamma_probs = nCR*gamma_levels
-        self.crossover_burnin = crossover_burnin
+        self.crossover_burnin: int = crossover_burnin if crossover_burnin is not None else 0
         self.crossover_file = crossover_file
 
         self.adapt_crossover = adapt_crossover
@@ -239,6 +247,24 @@ class Dream:
     def astep(
         self, q0: Any, T: float = 1., last_loglike: Optional[float] = None, last_logprior: Optional[float] = None
     ) -> Tuple[np.ndarray, float, float]:
+        """Perform a single step of the DREAM sampler for a given chain.
+
+        Parameters
+        ----------
+        q0 : numpy.ndarray
+            The current parameter vector (starting point for this step).
+        T : float, optional
+            The parallel tempering temperature. Default is 1.0.
+        last_loglike : float, optional
+            The log likelihood evaluated at `q0`. Default is None.
+        last_logprior : float, optional
+            The log prior probability evaluated at `q0`. Default is None.
+
+        Returns
+        -------
+        Tuple[numpy.ndarray, float, float]
+            A tuple containing the newly selected point, its log prior, and its log likelihood.
+        """
         # Ensure the starting point is evaluated as a NumPy array (avoids TypeError from lists)
         q0 = np.asarray(q0)
 
@@ -448,8 +474,8 @@ class Dream:
             #Don't do this for the first 10 iterations to give all chains a chance to fill in the
             #shared current position array
             #Don't count iterations where gamma was set to 1 in crossover adaptation calculations
-            if (self.adapt_crossover and self.iter > 10 and self.iter < self.crossover_burnin
-                and not np.any(np.array(self.gamma) == 1.0)):
+            if (self.adapt_crossover and self.iter > 10
+                and self.iter < self.crossover_burnin and not np.any(np.array(self.gamma) == 1.0)):
                 with (
                     Dream_shared_vars.cross_probs.get_lock(), Dream_shared_vars.count.get_lock(),
                     Dream_shared_vars.ncr_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(),
@@ -463,8 +489,8 @@ class Dream:
                         self.CR_probabilities = self.estimate_crossover_probabilities(self.total_var_dimension, q0, q_new, CR=1)
 
 
-            if (self.adapt_gamma and self.iter > 10 and self.iter < self.crossover_burnin
-                and not np.any(np.array(self.gamma) == 1.0) and not run_snooker):
+            if (self.adapt_gamma and self.iter > 10
+                and self.iter < self.crossover_burnin and not np.any(np.array(self.gamma) == 1.0) and not run_snooker):
                with (
                    Dream_shared_vars.gamma_level_probs.get_lock(), Dream_shared_vars.count.get_lock(),
                    Dream_shared_vars.ngamma_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(),
@@ -521,6 +547,10 @@ class Dream:
 
         q_new : numpy array
             accepted point in parameter space
+
+        Returns
+        -------
+        None
         """
 
         if self.nchains is None:
@@ -551,7 +581,13 @@ class Dream:
         q_new : numpy array
             new point in parameter space
         CR : float
-            selected crossover probability for this step"""
+            selected crossover probability for this step
+
+        Returns
+        -------
+        numpy.ndarray
+            The updated crossover probabilities.
+        """
 
         cross_probs = Dream_shared_vars.cross_probs[0:self.nCR]
 
@@ -601,7 +637,13 @@ class Dream:
         q_new : numpy array
             new point in parameter space
         gamma_level : int
-            gamma level selected for this step"""
+            gamma level selected for this step
+
+        Returns
+        -------
+        numpy.ndarray
+            The updated gamma level probabilities.
+        """
 
         current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj(), dtype=np.float64)
 
@@ -631,7 +673,13 @@ class Dream:
         return gamma_level_probs
 
     def set_snooker(self) -> bool:
-        """Choose to run a snooker update on a given iteration or not."""
+        """Choose to run a snooker update on a given iteration or not.
+
+        Returns
+        -------
+        bool
+            True if a snooker update should be run, False otherwise.
+        """
         if self.snooker != 0:
             snooker_choice = int(
                 np.random.multinomial(1, [self.snooker, 1-self.snooker]).argmax())
@@ -653,7 +701,13 @@ class Dream:
         CR_probs : numpy array
             current probabilities of selecting given crossover values
         CR_values : numpy array
-            possible crossover values"""
+            possible crossover values
+
+        Returns
+        -------
+        float
+            The selected crossover value.
+        """
         CR_loc = np.where(np.random.multinomial(1, CR_probs)==1)
 
         CR = CR_vals[CR_loc]
@@ -666,7 +720,13 @@ class Dream:
         Parameters
         ----------
         DEpairs : numpy array
-            possible values for the number of chain pairs to be used for proposing the next point"""
+            possible values for the number of chain pairs to be used for proposing the next point
+
+        Returns
+        -------
+        int
+            The selected number of pairs.
+        """
 
         if len(DEpairs)>1:
             DEpair_choice = np.squeeze(np.random.randint(1, len(DEpairs)+1, size=1))
@@ -682,7 +742,13 @@ class Dream:
         gamma_level_probs : numpy array
             current probabilities of selecting possible gamma levels
         gamma_level_vals : numpy array
-            possible values of gamma level"""
+            possible values of gamma level
+
+        Returns
+        -------
+        int
+            The selected gamma level.
+        """
 
         gamma_loc = np.where(np.random.multinomial(1, gamma_level_probs)==1)
 
@@ -702,7 +768,13 @@ class Dream:
         gamma_level_choice : int
             selected level of gamma values to be used this iteration
         d_prime : int
-            number of parameter dimensions to be updated on this step."""
+            number of parameter dimensions to be updated on this step.
+
+        Returns
+        -------
+        float
+            The calculated gamma value.
+        """
 
         gamma_unity_choice = int(
             np.random.multinomial(1, [self.p_gamma_unity, 1-self.p_gamma_unity]).argmax())
@@ -725,6 +797,11 @@ class Dream:
         ----------
         model_vars : iterable of instance(s) of SampledParam class
             Model parameters to be sampled with their previously specified prior
+
+        Returns
+        -------
+        numpy.ndarray
+            A random draw flat array.
         """
 
         draw = np.array([])
@@ -749,6 +826,11 @@ class Dream:
             number of dimensions in a draw
         snooker : bool
             whether to use a snooker update at this iteration. Default = False
+
+        Returns
+        -------
+        List[numpy.ndarray]
+            A list of random history points.
         """
 
         if not snooker:
@@ -776,7 +858,13 @@ class Dream:
         gamma_level : int
             Level of gamma values to use for this iteration
         snooker : bool
-            Whether to use a snooker update on this iteration."""
+            Whether to use a snooker update on this iteration.
+
+        Returns
+        -------
+        Any
+            The proposed points, and potentially snooker log probabilities and z points.
+        """
 
         if not snooker:
 
@@ -913,7 +1001,13 @@ class Dream:
         n_proposed_pts : int
             Number of points to propose this iteration (greater than one if using multi-try update scheme)
         q0 : numpy array
-            Original point in parameter space"""
+            Original point in parameter space
+
+        Returns
+        -------
+        Tuple[Any, Any, Any]
+            The proposed points, snooker log probabilities, and sampled history point reference.
+        """
 
         sampled_history_pt = [
             self.sample_from_history(self.nseedchains, self.DEpairs, self.total_var_dimension, snooker=True)
@@ -979,7 +1073,13 @@ class Dream:
             Function that takes a point in parameter space and
             returns the log of the prior value and the log of the likelihood at that point
         ref : bool
-            Whether this is a multi-try reference draw. Default = False"""
+            Whether this is a multi-try reference draw. Default = False
+
+        Returns
+        -------
+        Tuple[numpy.ndarray, numpy.ndarray]
+            The log prior array and log likelihood array for the given points.
+        """
 
         #If using multi-try and running in parallel farm out proposed points to process pool.
         #Bug 2 Fix: Only use parallel evaluation for multitry if we are in the MainProcess
@@ -988,8 +1088,7 @@ class Dream:
             #Bug 1 Fix: Ensure proposed_pts is at least 2D before squeezing/iterating
             pts = np.atleast_2d(proposed_pts)
             args = list(zip([self] * len(pts), pts))
-            ctx = mp.get_context(self.mp_context)
-            with ctx.Pool(len(pts)) as p:
+            with self.mp_context.Pool(len(pts)) as p:
                 logps = p.map(call_logp, args)
             log_priors = [val[0] for val in logps]
             log_likes = [val[1] for val in logps]
@@ -1027,7 +1126,13 @@ class Dream:
         proposed_pts : numpy 2D array nmulti-tries x nparameterdims
             Proposed points
         T : float
-            Temperature (only used if using parallel tempering)"""
+            Temperature (only used if using parallel tempering)
+
+        Returns
+        -------
+        Tuple[numpy.ndarray, float, float, float, float]
+            The randomly selected proposal point, its logp, un-tempered logp, un-tempered loglike, and logprior.
+        """
 
         #Substract largest logp from all logps (this from original Matlab code)
         org_log_likes = log_likes
@@ -1063,7 +1168,12 @@ class Dream:
         q_new : numpy array
             Accepted point
         len_history : int
-            The total dimension of the history when completely filled"""
+            The total dimension of the history when completely filled
+
+        Returns
+        -------
+        None
+        """
 
         nhistoryrecs = Dream_shared_vars.count.value+nseedchains
         start_loc = int(nhistoryrecs*ndimensions)
@@ -1087,7 +1197,12 @@ class Dream:
         history : numpy array
             History array
         prefix : str
-            Prefix to add to history filename when saving"""
+            Prefix to add to history filename when saving
+
+        Returns
+        -------
+        None
+        """
 
         filename = prefix+'DREAM_chain_history.npy'
         print('Saving history to file: ',filename)
@@ -1104,6 +1219,18 @@ class Dream:
         np.save(filename, self.gamma_probabilities)
 
 def call_logp(args: Tuple[Any, np.ndarray]) -> Tuple[float, float]:
+    """Helper method to evaluate log probabilities for mapping.
+
+    Parameters
+    ----------
+    args : Tuple
+        A tuple containing the object instance and the point to evaluate.
+
+    Returns
+    -------
+    Tuple[float, float]
+        The log prior and log likelihood.
+    """
     #Defined at top level so it can be pickled.
     instance = args[0]
     tested_point = args[1]
@@ -1122,7 +1249,13 @@ def metrop_select(mr: float, q: np.ndarray, q0: np.ndarray) -> np.ndarray:
     q : numpy array
         Proposed point
     q0 : numpy array
-        Original point"""
+        Original point
+
+        Returns
+        -------
+        numpy.ndarray
+            The accepted point.
+        """
 
     # Compare acceptance ratio to uniform random number
     if np.isfinite(mr) and np.log(np.random.uniform()) < mr:

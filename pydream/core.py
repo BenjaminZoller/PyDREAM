@@ -28,37 +28,38 @@ def run_dream(
 
     Parameters
     ----------
-    parameters: iterable of SampledParam class
-        A list of parameter priors
-    likelihood: function
-        A user-defined likelihood function
-    nchains: int, optional
-        The number of parallel DREAM chains to run.  Default = 5
-    niterations: int, optional
-        The number of algorithm iterations to run. Default = 50,000
-    start: iterable of arrays or single array, optional
+    parameters : iterable of SampledParam
+        A list of parameter priors.
+    likelihood : Callable
+        A user-defined likelihood function.
+    nchains : int, optional
+        The number of parallel DREAM chains to run. Must be at least 3
+        (specifically, at least `(2 * len(DEpairs)) + 1`). Default is 5.
+    niterations : int, optional
+        The number of algorithm iterations to run. Default is 50,000.
+    start : iterable of numpy.ndarray or numpy.ndarray, optional
         Either a list of start locations to initialize chains in, or a single start location to
-        initialize all chains in. Default: None
-    restart: Boolean, optional
+        initialize all chains in. Default is None.
+    restart : bool, optional
         Whether run is a continuation of an earlier run.  Pass this with the model_name argument to
-        automatically load previous history and crossover probability files.  Default: False
-    verbose: Boolean, optional
-        Whether to print verbose output (including acceptance or rejection of moves and the current acceptance rate).  Default: True
-    tempering: Boolean, optional
-        Whether to use parallel tempering for the DREAM chains.  Warning: this feature is untested.  Use at your own risk! Default: False
-    mp_context: multiprocessing context or None.
-        Method used to to start the processes. If it's None, the default context, which depends in Python version and OS, is used.
+        automatically load previous history and crossover probability files. Default is False.
+    verbose : bool, optional
+        Whether to print verbose output (including acceptance or rejection of moves and the current acceptance rate). Default is True.
+    tempering : bool, optional
+        Whether to use parallel tempering for the DREAM chains. Warning: this feature is untested. Use at your own risk! Default is False.
+    mp_context : multiprocessing context or None, optional
+        Method used to start the processes. If it's None, the default context, which depends on Python version and OS, is used.
         For more information please check: https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-    kwargs:
+    **kwargs : Any
         Other arguments that will be passed to the Dream class on initialization.  For more information, see Dream class.
 
     Returns
     -------
-    sampled_params : list of arrays
-        Sampled parameters for each chain
-    log_ps : list of arrays
-        Log probability for each sampled point for each chain
-        """
+    sampled_params : list of numpy.ndarray
+        Sampled parameters for each chain.
+    log_ps : list of numpy.ndarray
+        Log probability for each sampled point for each chain.
+    """
 
     if restart:
         if start is None:
@@ -68,6 +69,9 @@ def run_dream(
 
     if not isinstance(parameters, list):
         parameters = [parameters]
+
+    if kwargs.get('crossover_burnin') is None:
+        kwargs['crossover_burnin'] = int(np.floor(niterations / 10))
 
     model = Model(likelihood=likelihood, sampled_parameters=parameters)
 
@@ -104,6 +108,19 @@ def run_dream(
 
 
 def _sample_dream(args: Tuple[Any, int, Optional[np.ndarray], bool, int]) -> Tuple[np.ndarray, np.ndarray]:
+    """Serial and nested worker sampling method.
+
+    Parameters
+    ----------
+    args : Tuple
+        A tuple containing the Dream instance, number of iterations, starting point,
+        verbose flag, and nverbose print interval.
+
+    Returns
+    -------
+    Tuple[numpy.ndarray, numpy.ndarray]
+        The sampled parameters and their corresponding log probabilities.
+    """
 
     try:
         dream_instance = args[0]
@@ -148,6 +165,28 @@ def _sample_dream(args: Tuple[Any, int, Optional[np.ndarray], bool, int]) -> Tup
 def _sample_dream_pt(
     nchains: int, niterations: int, step_instance: Any, start: np.ndarray, pool: Any, verbose: bool
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Parallel tempering sampling method.
+
+    Parameters
+    ----------
+    nchains : int
+        The number of chains.
+    niterations : int
+        The number of iterations to perform.
+    step_instance : Dream
+        The configured Dream sampler instance.
+    start : numpy.ndarray
+        The starting positions for the chains.
+    pool : multiprocessing.Pool
+        The parallel process pool.
+    verbose : bool
+        Whether to print verbose output.
+
+    Returns
+    -------
+    Tuple[numpy.ndarray, numpy.ndarray]
+        The sampled parameters and their corresponding log probabilities for all chains.
+    """
 
     T = np.zeros((nchains))
     T[0] = 1.
@@ -269,6 +308,18 @@ def _sample_dream_pt(
 
 
 def _sample_dream_pt_chain(args: Tuple[Any, np.ndarray, float, float, float]) -> Tuple[np.ndarray, float, float, Any]:
+    """Helper method to sample a single chain in parallel tempering.
+
+    Parameters
+    ----------
+    args : Tuple
+        Arguments for evaluating a single chain.
+
+    Returns
+    -------
+    Tuple[numpy.ndarray, float, float, Any]
+        The updated position, prior, likelihood, and updated Dream instance.
+    """
 
     dream_instance = args[0]
     start = args[1]
@@ -283,6 +334,26 @@ def _sample_dream_pt_chain(args: Tuple[Any, np.ndarray, float, float, float]) ->
 def _setup_mp_dream_pool(
     nchains: int, niterations: int, step_instance: Any, start_pt: Optional[np.ndarray] = None, mp_context: Optional[Any] = None
 ) -> Any:
+    """Setup and initialize the multiprocessing pool and shared memory.
+
+    Parameters
+    ----------
+    nchains : int
+        The number of chains to initialize.
+    niterations : int
+        The number of algorithm iterations.
+    step_instance : Dream
+        The configured Dream instance providing parameters and sizing.
+    start_pt : numpy.ndarray, optional
+        Optional starting points.
+    mp_context : Any, optional
+        The multiprocessing context to use.
+
+    Returns
+    -------
+    multiprocessing.Pool
+        The initialized multiprocessing pool ready for mapped evaluations.
+    """
 
     min_njobs = (2*len(step_instance.DEpairs))+1
     if nchains < min_njobs:
@@ -305,11 +376,11 @@ def _setup_mp_dream_pool(
                                 step_instance.history_thin)) + len_old_history
     else:
         if niterations < step_instance.history_thin:
-            arr_dim = ((np.floor(nchains*niterations/step_instance.history_thin)+nchains)*step_instance.total_var_dimension)+(step_instance.nseedchains*step_instance.total_var_dimension)
+            arr_dim = ((np.floor(nchains * niterations / step_instance.history_thin) + nchains) *
+                       step_instance.total_var_dimension) + (step_instance.nseedchains * step_instance.total_var_dimension)
         else:
             arr_dim = (np.floor(((nchains * niterations / step_instance.history_thin) *
-                                 step_instance.total_var_dimension)) +
-                       (step_instance.nseedchains * step_instance.total_var_dimension))
+                       step_instance.total_var_dimension)) + (step_instance.nseedchains * step_instance.total_var_dimension))
 
     min_nseedchains = 2*len(step_instance.DEpairs)*nchains
 
@@ -318,10 +389,11 @@ def _setup_mp_dream_pool(
 
     current_position_dim = nchains*step_instance.total_var_dimension
     # Get context to define arrays
-    if mp_context is None:
+    if isinstance(mp_context, str) or mp_context is None:
         ctx = mp.get_context(mp_context)
     else:
         ctx = mp_context
+
     history_arr = ctx.Array('d', [0] * int(arr_dim))
     if step_instance.history_file is not False:
         history_arr[0:len_old_history] = old_history.flatten()
@@ -340,9 +412,6 @@ def _setup_mp_dream_pool(
     n = ctx.Value('i', 0)
     tf = ctx.Value('c', b'F')
     burnin_barrier = ctx.Barrier(nchains)
-
-    if step_instance.crossover_burnin is None:
-        step_instance.crossover_burnin = int(np.floor(niterations/10))
 
     if start_pt is not None:
         if step_instance.start_random:
@@ -363,15 +432,23 @@ def _mp_dream_init(
     arr: Any, cp_arr: Any, nchains: Any, crossover_probs: Any, ncrossover_updates: Any, delta_m: Any,
     gamma_probs: Any, ngamma_updates: Any, delta_m_gamma: Any, val: Any, switch: Any, burnin_barrier: Any
 ) -> None:
-      Dream_shared_vars.history = arr
-      Dream_shared_vars.current_positions = cp_arr
-      Dream_shared_vars.nchains = nchains
-      Dream_shared_vars.cross_probs = crossover_probs
-      Dream_shared_vars.ncr_updates = ncrossover_updates
-      Dream_shared_vars.delta_m = delta_m
-      Dream_shared_vars.gamma_level_probs = gamma_probs
-      Dream_shared_vars.ngamma_updates = ngamma_updates
-      Dream_shared_vars.delta_m_gamma = delta_m_gamma
-      Dream_shared_vars.count = val
-      Dream_shared_vars.history_seeded = switch
-      Dream_shared_vars.burnin_barrier = burnin_barrier
+    """Initializer function for worker processes to hook into shared memory arrays.
+
+    Parameters
+    ----------
+    arr, cp_arr, nchains, crossover_probs, ncrossover_updates, delta_m, gamma_probs,
+    ngamma_updates, delta_m_gamma, val, switch, burnin_barrier : Any
+        Cross-platform shared `multiprocessing` objects from the main process.
+    """
+    Dream_shared_vars.history = arr
+    Dream_shared_vars.current_positions = cp_arr
+    Dream_shared_vars.nchains = nchains
+    Dream_shared_vars.cross_probs = crossover_probs
+    Dream_shared_vars.ncr_updates = ncrossover_updates
+    Dream_shared_vars.delta_m = delta_m
+    Dream_shared_vars.gamma_level_probs = gamma_probs
+    Dream_shared_vars.ngamma_updates = ngamma_updates
+    Dream_shared_vars.delta_m_gamma = delta_m_gamma
+    Dream_shared_vars.count = val
+    Dream_shared_vars.history_seeded = switch
+    Dream_shared_vars.burnin_barrier = burnin_barrier
