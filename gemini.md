@@ -1,37 +1,225 @@
-# Gemini Code Assist Agent Directives: PyDream Modernization & Bug Fixing
+# GEMINI.md
+
+# PyDREAM Agent Directives
 
 ## Objective
-Your task is to fix critical bugs and modernize the `pydream` codebase to be fully compatible with Python 3.11+ and NumPy 2.4+.
 
-## Strict Constraints
-1. **Retain Functionality**: The underlying mathematical and algorithmic logic of Differential Evolution Markov Chain (DREAM) sampling must remain strictly unchanged.
-2. **Measured Refactoring**: While modernizing the codebase, allow for stylistic refactoring to meet basic Pylance, PEP-8, and type-hinting standards. Ensure these changes improve readability and maintainability without altering the mathematical logic.
-3. **Code Clarity & Efficiency**: Where changes are required, use standard, efficient, and readable Python/NumPy paradigms.
-4. **NumPy 2.4+ Compatibility**: Ensure no deprecated NumPy types or functions are used (e.g., `np.float`, `np.int`, `np.bool` must be converted to native `float`, `int`, `bool`).
+Modernize and maintain the `pydream` codebase for:
 
-## Identified Bugs
-For a comprehensive list of previously identified bugs, their root causes, and resolution details, please refer to the `PYDREAM_BUGS_DOCUMENTATION.md` file. 
+* Python >= 3.11
+* NumPy >= 2.x
+* modern scientific Python tooling
+* improved maintainability and code quality
 
-**Current Status:** As noted in the documentation, all previously identified critical bugs (such as the `multitry=2` crash and the nested multiprocessing bottleneck) are currently marked as **FIXED**. Maintain these fixes and refer to the documentation if investigating related regressions.
+while preserving the original DREAM sampling behavior and statistical semantics.
 
-## Modernization Checklist
-1. **Python 3.11+ Standards**:
-   - Verify the `multiprocessing` context management is handled correctly. `mp.get_context()` is currently used, ensure its implementation does not conflict with Python 3.11+ daemon process constraints.
-   - Remove compatibility fallbacks for Python 2.x (e.g., checking `sys.version_info[0] < 3` for `assertRaisesRegexp`).
-2. **NumPy 2.4+ Strict Compatibility**:
-   - NumPy 2.x removed several aliases. Scan the codebase for `np.float`, `np.int`, `np.bool`, and `np.object` and replace them with standard Python types or valid NumPy `dtypes` (e.g., `np.float64`, `bool`).
-   - Verify boolean masking and indexing arrays properly return 1D or ND arrays as expected.
-   - Pay attention to `np.frombuffer` usages with multiprocessing shared arrays to ensure no strict casting violations exist.
-   - `np.nan_to_num` and `np.linalg.norm` operations should be checked to ensure keyword arguments and behaviors align with NumPy 2.4+.
-3. **Pylance & Type Hinting (New)**:
-   - Introduce basic type hinting (e.g., `int`, `float`, `bool`, `list`, `Callable` and basic `numpy.typing`) for function and method signatures.
-   - Resolve basic Pylance warnings (e.g., unused imports, undefined variables, unreachable code).
-   - Modernize string formatting (e.g., replace `'string %s' % var` with modern f-strings where it improves readability).
-   - Clean up excessive empty lines and enforce standard indentation.
+---
 
-## Workflow Instructions for the Agent
-When asked to implement these fixes:
-1. Focus on one specific module or bug at a time.
-2. First verify the nature of the bugs within the codebase, and then proceed to resolve them.
-3. Prioritize providing full diffs (Unified Diff Format) for modified files.
-4. Verify the changes against the Constraints listed above before outputting the code.
+# Core Constraints
+
+## 1. Preserve Mathematical Semantics
+
+The DREAM sampling algorithm and its statistical behavior must remain unchanged.
+
+Do NOT introduce changes that alter:
+
+* proposal generation
+* acceptance logic
+* convergence behavior
+* chain evolution
+* probability calculations
+* multiprocessing sampling semantics
+
+Performance improvements and refactoring are acceptable only if statistical behavior remains equivalent.
+
+---
+
+## 2. Prefer Minimal, Targeted Changes
+
+Prefer:
+
+* localized fixes
+* incremental refactors
+* explicit code changes
+* backwards-compatible improvements
+
+Avoid:
+
+* unnecessary rewrites
+* broad architectural refactors
+* stylistic churn unrelated to the task
+
+---
+
+## 3. Modern Python Compatibility
+
+The codebase targets:
+
+* Python 3.11+
+* NumPy 2.x+
+
+Remove obsolete compatibility code for:
+
+* Python 2.x
+* deprecated NumPy aliases
+* legacy multiprocessing patterns
+
+---
+
+## 4. Maintain Scientific Robustness
+
+Scientific correctness takes precedence over stylistic preferences.
+
+When modifying stochastic or numerical code:
+
+* preserve numerical stability
+* avoid hidden dtype changes
+* preserve array shape semantics
+* avoid introducing nondeterministic multiprocessing bugs
+
+---
+
+# Modernization Guidelines
+
+## NumPy 2.x Compatibility
+
+Replace deprecated aliases:
+
+* `np.float` → `float` or `np.float64`
+* `np.int` → `int` or explicit integer dtype
+* `np.bool` → `bool`
+* `np.object` → `object`
+
+Verify:
+
+* boolean masking behavior
+* broadcasting semantics
+* `np.frombuffer` shared-memory usage
+* `np.nan_to_num` compatibility
+* `np.linalg` API usage
+
+---
+
+## Python 3.11+ Compatibility
+
+Modernize:
+
+* multiprocessing context handling
+* process spawning behavior
+* daemon process interactions
+* outdated unittest compatibility code
+
+Remove:
+
+* Python 2 conditionals
+* obsolete fallback logic
+* dead compatibility branches
+
+---
+
+## Typing and Linting
+
+Use:
+
+* `ruff`
+* PEP-8 compliant formatting
+* modern type hints
+* `numpy.typing` where appropriate
+
+Prioritize type hints for:
+
+* public APIs
+* sampling interfaces
+* probability/log-likelihood functions
+
+Resolve:
+
+* unused imports
+* unreachable code
+* undefined variables
+* unsafe Optional handling
+
+Avoid excessive typing complexity.
+
+---
+
+# Testing Requirements
+
+## General Principles
+
+MCMC behavior is stochastic and platform-dependent.
+
+Do NOT rely on exact chain reproducibility across systems.
+
+Prefer tests validating:
+
+* statistical invariants
+* finite outputs
+* expected shapes
+* approximate posterior statistics
+* restart/resume correctness
+* multiprocessing stability
+
+---
+
+## Preferred Test Types
+
+### Unit Tests
+
+Validate:
+
+* API behavior
+* shapes and dtypes
+* edge cases
+* serialization
+* restart logic
+
+### Statistical Tests
+
+Use simple known targets:
+
+* Gaussian distributions
+* correlated Gaussian targets
+* bounded distributions
+
+Validate:
+
+* approximate posterior mean/covariance
+* finite log probabilities
+* reasonable acceptance rates
+
+Use tolerant thresholds.
+
+---
+
+# Workflow Instructions
+
+When implementing fixes:
+
+1. Focus on one module or issue at a time.
+2. First identify the root cause before modifying code.
+3. Prefer minimal diffs.
+4. Add or update tests for bug fixes.
+5. Verify compatibility with:
+
+   * Python 3.11+
+   * NumPy 2.x+
+6. Ensure all changes respect the Core Constraints.
+
+When possible, provide:
+
+* unified diffs
+* concise rationale for changes
+* notes about numerical or compatibility implications
+
+---
+
+# Existing Bug Documentation
+
+Known historical bugs and fixes are documented in:
+
+```text id="4p6k6r"
+PYDREAM_BUGS_DOCUMENTATION.md
+```
+
+Preserve existing fixes and avoid reintroducing known regressions.
