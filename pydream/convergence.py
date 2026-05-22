@@ -1,5 +1,6 @@
-import numpy as np
 from typing import List
+
+import numpy as np
 
 
 def Gelman_Rubin(sampled_parameters: List[np.ndarray]) -> np.ndarray:

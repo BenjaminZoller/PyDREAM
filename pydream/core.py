@@ -44,14 +44,18 @@ def run_dream(
         Whether run is a continuation of an earlier run.  Pass this with the model_name argument to
         automatically load previous history and crossover probability files. Default is False.
     verbose : bool, optional
-        Whether to print verbose output (including acceptance or rejection of moves and the current acceptance rate). Default is True.
+        Whether to print verbose output (including acceptance or rejection of moves and the
+        current acceptance rate). Default is True.
     tempering : bool, optional
-        Whether to use parallel tempering for the DREAM chains. Warning: this feature is untested. Use at your own risk! Default is False.
+        Whether to use parallel tempering for the DREAM chains. Warning: this feature is untested.
+        Use at your own risk! Default is False.
     mp_context : multiprocessing context or None, optional
-        Method used to start the processes. If it's None, the default context, which depends on Python version and OS, is used.
+        Method used to start the processes. If it's None, the default context, which depends on
+        Python version and OS, is used.
         For more information please check: https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     **kwargs : Any
-        Other arguments that will be passed to the Dream class on initialization.  For more information, see Dream class.
+        Other arguments that will be passed to the Dream class on initialization.
+        For more information, see Dream class.
 
     Returns
     -------

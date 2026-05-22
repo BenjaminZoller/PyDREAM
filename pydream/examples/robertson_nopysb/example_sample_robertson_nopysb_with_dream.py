@@ -187,7 +187,7 @@ if __name__ == '__main__':
         colors = sns.color_palette(n_colors=ndims)
         for dim in range(ndims):
             fig = plt.figure()
-            sns.distplot(samples[:, dim], color=colors[dim])
+            sns.histplot(samples[:, dim], color=colors[dim], kde=True)
             fig.savefig('PyDREAM_example_Robertson_noPySB_dimension_' + str(dim))
 
     except ImportError:

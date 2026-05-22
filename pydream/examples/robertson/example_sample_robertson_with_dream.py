@@ -10,19 +10,19 @@ import os
 
 import numpy as np
 from pysb.examples.robertson import model
-from pysb.integrate import Solver
+from pysb.simulator import ScipyOdeSimulator
 from scipy.stats import norm, uniform
 
 from pydream.convergence import Gelman_Rubin
 from pydream.core import run_dream
 from pydream.parameters import SampledParam
 
-#Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
-tspan = np.linspace(0,40)
-solver = Solver(model, tspan)
-solver.run()
+#Initialize PySB simulator object for running simulations.  Simulation timespan should match experimental data.
+tspan = np.linspace(0, 40)
+simulator = ScipyOdeSimulator(model, tspan=tspan, integrator='lsoda', compiler='python')
 
-#Load experimental data to which Robertson model will be fit here.  The "experimental data" in this case is just the total C trajectory at the default model parameters with a standard deviation of .01.
+# Load experimental data to which Robertson model will be fit here.  The "experimental data" in
+# this case is just the total C trajectory at the default model parameters with a standard deviation of .01.
 pydream_path = os.path.dirname(inspect.getfile(run_dream))
 location= pydream_path+'/examples/robertson/exp_data/'
 exp_data_ctot = np.loadtxt(location+'exp_data_ctotal.txt')
@@ -35,27 +35,27 @@ like_ctot = norm(loc=exp_data_ctot, scale=exp_data_sd_ctot)
 #Create lists of sampled pysb parameter names to use for subbing in parameter values in likelihood function.
 pysb_sampled_parameter_names = [param.name for param in model.parameters_rules()]
 
-#Define likelihood function to generate simulated data that corresponds to experimental time points.
-#This function should take as input a parameter vector (parameter values are in the order dictated by first argument to run_dream function below).
-#The function returns a log probability value for the parameter vector given the experimental data.
+# Define likelihood function to generate simulated data that corresponds to experimental time points.
+# This function should take as input a parameter vector (parameter values are in the order dictated
+# by first argument to run_dream function below).
+# The function returns a log probability value for the parameter vector given the experimental data.
 
 def likelihood(parameter_vector):
 
     param_dict = {pname: pvalue for pname, pvalue in zip(pysb_sampled_parameter_names, parameter_vector)}
 
-    for pname, pvalue in param_dict.items():
-
-        #Change model parameter values to current location in parameter space
-
-        model.parameters[pname].value = 10**(pvalue)
+    # Convert log10 values back to linear scale for the simulator
+    param_values = {pname: 10**pvalue for pname, pvalue in param_dict.items()}
 
     #Simulate experimentally measured Ctotal values.
-
-    solver.run()
+    try:
+        res = simulator.run(param_values=param_values)
+        c_total_obs = res.observables['C_total']
+    except Exception:
+        return -np.inf
 
     #Calculate log probability contribution from simulated experimental values.
-
-    logp_ctotal = np.sum(like_ctot.logpdf(solver.yobs['C_total']))
+    logp_ctotal = np.sum(like_ctot.logpdf(c_total_obs))
 
     #If model simulation failed due to integrator errors, return a log probability of -inf.
     if np.isnan(logp_ctotal):
@@ -160,7 +160,7 @@ if __name__ == '__main__':
         colors = sns.color_palette(n_colors=ndims)
         for dim in range(ndims):
             fig = plt.figure()
-            sns.distplot(samples[:, dim], color=colors[dim])
+            sns.histplot(samples[:, dim], color=colors[dim], kde=True)
             fig.savefig('PyDREAM_example_Robertson_dimension_' + str(dim))
 
     except ImportError:

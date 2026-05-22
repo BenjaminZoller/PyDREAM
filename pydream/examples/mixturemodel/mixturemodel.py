@@ -80,7 +80,7 @@ if __name__ == '__main__':
         colors = sns.color_palette(n_colors=ndims)
         for dim in range(ndims):
             fig = plt.figure()
-            sns.distplot(samples[:, dim], color=colors[dim])
+            sns.histplot(samples[:, dim], color=colors[dim], kde=True)
             fig.savefig('PyDREAM_example_MixtureModel_dimension_'+str(dim))
 
     except ImportError:
@@ -90,8 +90,3 @@ else:
     run_kwargs = {'parameters':params, 'likelihood':likelihood, 'niterations':50000, 'nchains':3, 'start':starts, 'start_random':False,\
                   'multitry':5, 'adapt_gamma':True, 'history_thin':1, 'model_name':'corm_dreamzs_5chain', 'verbose':True, \
                   'save_history':True, 'history_file':'mixturemodel_seed.npy', 'parallel':False}
-
-
-
-
-

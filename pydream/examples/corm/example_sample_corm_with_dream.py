@@ -47,7 +47,8 @@ like_PGs = norm(loc=exp_data_PG, scale=exp_data_sd_PG)
 like_PGGs = norm(loc=exp_data_PGG, scale=exp_data_sd_PGG)
 like_thermobox = norm(loc=1, scale=1e-2)
 
-#Create lists of sampled pysb parameter names to use for subbing in parameter values in likelihood function and for setting all kfs to diffusion limited value.
+# Create lists of sampled pysb parameter names to use for subbing in parameter values in
+# likelihood function and for setting all kfs to diffusion limited value.
 pysb_sampled_parameter_names = [
     'kr_AA_cat2', 'kcat_AA2', 'kr_AA_cat3', 'kcat_AA3', 'kr_AG_cat2', 'kr_AG_cat3',
     'kcat_AG3', 'kr_AA_allo1', 'kr_AA_allo2', 'kr_AA_allo3', 'kr_AG_allo1', 'kr_AG_allo2'
@@ -141,7 +142,8 @@ for AA_init in exp_cond_AA:
 sampled_param_indices = {pname: [p.name for p in cox2_model.parameters].index(pname) for pname in pysb_sampled_parameter_names}
 
 # Define likelihood function to generate simulated data that corresponds to experimental time points.
-# This function should take as input a parameter vector (parameter values are in the order dictated by first argument to run_dream function below).
+# This function should take as input a parameter vector (parameter values are in the order dictated
+# by first argument to run_dream function below).
 # The function returns a log probability value for the parameter vector given the experimental data.
 
 def likelihood(parameter_vector):
@@ -288,7 +290,7 @@ if __name__ == '__main__':
         colors = sns.color_palette(n_colors=ndims)
         for dim in range(ndims):
             fig = plt.figure()
-            sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)
+            sns.histplot(samples[:, dim], color=colors[dim], kde=True, stat="density")
             fig.savefig('PyDREAM_example_CORM_dimension_'+str(dim))
 
     except ImportError:

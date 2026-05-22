@@ -14,7 +14,8 @@ from . import Dream_shared_vars
 class Dream:
     r"""An implementation of the MT-DREAM\ :sub:`(ZS)`\  algorithm introduced in:
         Laloy, E. & Vrugt, J. A.
-        High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing.
+        High-dimensional posterior exploration of hydrologic models using multiple-try
+        DREAM\ :sub:`(ZS)`\  and high-performance computing.
         Water Resources Research 48, W01526 (2012).
 
     Parameters
@@ -50,16 +51,20 @@ class Dream:
         Whether to intialize chains from a random point in parameter space drawn from the prior (default = yes).
         Will override starting position set when sample was called, if any.
     save_history : bool
-        Whether to save the history to file at the end of the run (essential if you want to continue the run).  Default is yes.
+        Whether to save the history to file at the end of the run (essential if you want to continue the run).
+        Default is yes.
     history_file : str
-        Name of history file to be loaded.  Assumed to be in directory you ran the script from.  If False, no file to be loaded.
+        Name of history file to be loaded.  Assumed to be in directory you ran the script from.
+        If False, no file to be loaded.
     crossover_file : str
-        Name of crossover file to be loaded. Assumed to be in directory you ran the script from.  If False, no file to be loaded.
+        Name of crossover file to be loaded. Assumed to be in directory you ran the script from.
+        If False, no file to be loaded.
     multitry : bool
         Whether to utilize multi-try sampling.  Default is no.  If set to True, will be set to 5 multiple tries.
         Can also directly specify an integer if desired.
     parallel : bool
-        Whether to run multi-try samples in parallel (using multiprocessing).  Default is false.  Irrelevant if multitry is set to False.
+        Whether to run multi-try samples in parallel (using multiprocessing).  Default is false.
+        Irrelevant if multitry is set to False.
     verbose : bool
         Whether to print verbose progress.  Default is false.
     model_name : str
@@ -68,7 +73,8 @@ class Dream:
         Whether to relect point back into bounds of hard prior (i.e., if using a uniform prior, reflect points outside
         of boundaries back in, so you don't waste time looking at points with logpdf = -inf).
     mp_context : multiprocessing context or None.
-        Method used to start the processes. If it's None, the default context, which depends on Python version and OS, is used.
+        Method used to start the processes. If it's None, the default context, which depends on
+        Python version and OS, is used.
         For more information please check: https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     """
 
@@ -146,7 +152,8 @@ class Dream:
         self.nseedchains = nseedchains
         self.nCR = nCR
 
-        #If the number of crossover values is greater than the total variable dimension, set it to be the total variable dimension
+        # If the number of crossover values is greater than the total variable dimension,
+        # set it to be the total variable dimension
         if self.nCR > self.total_var_dimension:
             self.nCR = self.total_var_dimension
             print(
@@ -272,7 +279,8 @@ class Dream:
         snooker_logp_ref: Any = None
         q: Any = None
 
-        # On first iteration, check that shared variables have been initialized (which only occurs if multiple chains have been started).
+        # On first iteration, check that shared variables have been initialized
+        # (which only occurs if multiple chains have been started).
         if self.iter == 0:
 
             try:
@@ -361,7 +369,8 @@ class Dream:
                 log_priors, log_likes = self.mt_evaluate_logps(self.parallel, self.multitry, proposed_pts, self.logp, ref=False)
                 log_ps = T*log_likes + log_priors
 
-                #Check if all logps are -inf, in which case they'll all be impossible and we need to generate more proposal points
+                # Check if all logps are -inf, in which case they'll all be impossible and
+                # we need to generate more proposal points
                 while not np.any(np.isfinite(np.array(log_ps))):
                     if run_snooker:
                         proposed_pts, snooker_logp_prop, z = self.generate_proposal_points(
@@ -402,7 +411,8 @@ class Dream:
                     #where y = proposal point, X = current point, and Xref = reference point
                     # First determine p(y --> X) (i.e. moving from proposed point y to original point X)
                     # p(y --> X) equals ||y - z||^(n-1), i.e. the snooker_logp for the proposed point
-                    # p(Xref --> X) is equal to p(Xref --> y) * p(y --> X) (i.e. moving from Xref to proposed point y to original point X)
+                    # p(Xref --> X) is equal to p(Xref --> y) * p(y --> X)
+                    # (i.e. moving from Xref to proposed point y to original point X)
                     snooker_logp_ref = np.append(snooker_logp_ref, 0)
                     total_reference_logp = ref_log_ps + snooker_logp_ref + snooker_logp_prop
 
