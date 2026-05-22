@@ -4,7 +4,6 @@ import multiprocessing as mp
 import random
 import traceback
 from datetime import datetime
-from multiprocessing import context, pool
 from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -989,7 +988,8 @@ class Dream:
             #Bug 1 Fix: Ensure proposed_pts is at least 2D before squeezing/iterating
             pts = np.atleast_2d(proposed_pts)
             args = list(zip([self] * len(pts), pts))
-            with pool.Pool(len(pts), context=self.mp_context) as p:
+            ctx = mp.get_context(self.mp_context)
+            with ctx.Pool(len(pts)) as p:
                 logps = p.map(call_logp, args)
             log_priors = [val[0] for val in logps]
             log_likes = [val[1] for val in logps]
@@ -1131,74 +1131,3 @@ def metrop_select(mr: float, q: np.ndarray, q0: np.ndarray) -> np.ndarray:
     else:
         # Reject proposed value
         return q0
-
-# The following part uses source code from the file legacymultiproc.py from https://github.com/nipy/nipype
-# copyright NIPY developers, licensed under the Apache 2.0 license.
-
-# Pythons 3.4-3.7.0, and 3.7.1 have three different implementations of
-# pool.Pool().Process(), and the type of the result varies based on the default
-# multiprocessing context, so we need to dynamically patch the daemon property
-
-
-class NonDaemonMixin(object):
-    @property
-    def daemon(self):
-        return False
-
-    @daemon.setter
-    def daemon(self, val):
-        pass
-
-
-# Exists on all platforms
-class NonDaemonSpawnProcess(NonDaemonMixin, context.SpawnProcess):
-    pass
-
-
-class NonDaemonSpawnContext(context.SpawnContext):
-    Process = NonDaemonSpawnProcess
-
-
-_nondaemon_context_mapper = {
-    'spawn': NonDaemonSpawnContext()
-}
-
-# POSIX only
-try:
-    class NonDaemonForkProcess(NonDaemonMixin, context.ForkProcess):
-        pass
-
-
-    class NonDaemonForkContext(context.ForkContext):
-        Process = NonDaemonForkProcess
-
-
-    _nondaemon_context_mapper['fork'] = NonDaemonForkContext()
-except AttributeError:
-    pass
-# POSIX only
-try:
-    class NonDaemonForkServerProcess(NonDaemonMixin, context.ForkServerProcess):
-        pass
-
-
-    class NonDaemonForkServerContext(context.ForkServerContext):
-        Process = NonDaemonForkServerProcess
-
-
-    _nondaemon_context_mapper['forkserver'] = NonDaemonForkServerContext()
-except AttributeError:
-    pass
-
-
-class DreamPool(pool.Pool):
-    def __init__(self, processes=None, initializer=None, initargs=(),
-                 maxtasksperchild=None, context=None):
-        if context is None:
-            context = mp.get_context()
-        context = _nondaemon_context_mapper[context._name]
-        super(DreamPool, self).__init__(processes=processes,
-                                        initializer=initializer,
-                                        initargs=initargs,
-                                        maxtasksperchild=maxtasksperchild,
-                                        context=context)

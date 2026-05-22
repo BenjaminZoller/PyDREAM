@@ -7,7 +7,7 @@ from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 import numpy as np
 
 from . import Dream_shared_vars
-from .Dream import Dream, DreamPool
+from .Dream import Dream
 from .model import Model
 
 
@@ -352,10 +352,10 @@ def _setup_mp_dream_pool(
             )
             step_instance.start_random = False
 
-    p = DreamPool(nchains, context=ctx, initializer=_mp_dream_init,
-                  initargs=(history_arr, current_position_arr, shared_nchains,
-                            crossover_probabilities, ncrossover_updates, delta_m,
-                            gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf, burnin_barrier))
+    p = ctx.Pool(nchains, initializer=_mp_dream_init,
+                 initargs=(history_arr, current_position_arr, shared_nchains,
+                           crossover_probabilities, ncrossover_updates, delta_m,
+                           gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf, burnin_barrier))
 
     return p
 
