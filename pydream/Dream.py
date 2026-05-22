@@ -14,7 +14,8 @@ from . import Dream_shared_vars
 
 class Dream:
     r"""An implementation of the MT-DREAM\ :sub:`(ZS)`\  algorithm introduced in:
-        Laloy, E. & Vrugt, J. A. High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing. Water Resources Research 48, W01526 (2012).
+        Laloy, E. & Vrugt, J. A. High-dimensional posterior exploration of hydrologic models using multiple-try DREAM\ :sub:`(ZS)`\  and high-performance computing.
+        Water Resources Research 48, W01526 (2012).
 
     Parameters
     ----------
@@ -28,9 +29,8 @@ class Dream:
         Whether to adapt crossover values during the burn-in period.  Default is to adapt.
     crossover_burnin : int
         Number of iterations to fit the crossover values.  Defaults to 10% of total iterations.
-    DEpairs : int or list
+    DEpairs : int
         Number of chain pairs to use for crossover and selection of next point.  Default = 1.
-        Can pass a list to have a random number of pairs selected every iteration.
     lamb : float
         e sub d in DREAM papers.  Random error for ergodicity.  Default = .05
     zeta : float
@@ -77,7 +77,7 @@ class Dream:
         adapt_crossover: bool = True,
         adapt_gamma: bool = False,
         crossover_burnin: Optional[int] = None,
-        DEpairs: Union[int, List[int]] = 1,
+        DEpairs: int = 1,
         lamb: float = .05,
         zeta: float = 1e-12,
         history_thin: int = 10,
@@ -117,7 +117,7 @@ class Dream:
         #Set min and max values for boundaries
         if self.boundaries:
             if self.total_var_dimension == 1:
-                self.boundary_mask = True
+                self.boundary_mask: Any = True
             else:
                 self.boundary_mask = np.ones((self.total_var_dimension), dtype=bool)
             self.mins = []
@@ -206,7 +206,9 @@ class Dream:
         self.parallel = parallel
         self.lamb = lamb #This is e sub d in DREAM papers
         self.zeta = zeta #This is epsilon in DREAM papers
-        self.last_logp = None
+        self.last_logp: Optional[float] = None
+        self.last_prior: Optional[float] = None
+        self.last_like: Optional[float] = None
 
         #Set the number of seedchains to 10*dimensions to fit
         if self.nseedchains is None:
@@ -240,6 +242,10 @@ class Dream:
     ) -> Tuple[np.ndarray, float, float]:
         # Ensure the starting point is evaluated as a NumPy array (avoids TypeError from lists)
         q0 = np.asarray(q0)
+
+        snooker_logp_prop: Any = None
+        snooker_logp_ref: Any = None
+        q: Any = None
 
         # On first iteration, check that shared variables have been initialized (which only occurs if multiple chains have been started).
         if self.iter == 0:
@@ -790,7 +796,7 @@ class Dream:
             e = np.array([np.random.uniform(-self.lamb, self.lamb, self.total_var_dimension) for i in range(n_proposed_pts)])
             e = e+1
 
-            d_prime = self.total_var_dimension
+            d_prime: Any = self.total_var_dimension
             U = np.random.uniform(0, 1, size=chain_differences.shape)
 
             #Select gamma values given number of parameter dimensions to be changed (d_prime).

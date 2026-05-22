@@ -294,7 +294,7 @@ def _setup_mp_dream_pool(
         old_history = np.load(step_instance.history_file)
         len_old_history = len(old_history.flatten())
         nold_history_records = len_old_history/step_instance.total_var_dimension
-        step_instance.nseedchains = nold_history_records
+        step_instance.nseedchains = int(nold_history_records)
         if niterations < step_instance.history_thin:
             arr_dim = (
                 (np.floor(nchains * niterations / step_instance.history_thin) + nchains) *
