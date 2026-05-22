@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydream"
+version = "2.0.0"
+description = "A Python implementation of the MT-DREAM(ZS) algorithm from Laloy and Vrugt 2012."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Erin Shockley" }
+]
+maintainers = [
+    { name = "Benjamin Zoller", email = "missilzolair@gmail.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "numpy",
+    "scipy"
+]
+
+[project.urls]
+Homepage = "https://github.com/BenjaminZoller/PyDREAM"
+"Bug Tracker" = "https://github.com/BenjaminZoller/PyDREAM/issues"
+"Original Repository" = "https://github.com/LoLab-VU/PyDREAM"
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+
+[tool.setuptools]
+packages = ["pydream"]
+
+[tool.setuptools.package-data]
+"pydream.examples.corm.exp_data" = ["*.txt"]
+"pydream.examples.robertson.exp_data" = ["*.txt"]
+"pydream.examples.robertson_nopysb.exp_data" = ["*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["pydream/tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["pydream"]
+omit = ["pydream/tests/*"]
+concurrency = ["multiprocessing"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), pycodestyle (E, W), and isort (I)
+select = ["E", "F", "W", "I"]
+ignore = ["E501"] # Ignore strict line-length enforcement

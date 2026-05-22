@@ -1,22 +1,38 @@
-# Compiled python modules.
-*.pyc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 
-# Setuptools distribution folder.
-/dist/
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
 
-# Build older
-/build/
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
 
-# Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
-/*.egg
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
 
-#Matlab output files stored in example directories for testing
+# IDEs and OS files
+.idea/
+.vscode/
+.DS_Store
+
+# Linting and type checking cache
+.ruff_cache/
+.mypy_cache/
+
+# PyDREAM specific output files
 pydream/examples/mixturemodel/*.mat
 pydream/examples/ndim_gaussian/*.mat
-
-#Coverage output file
-*.coverage
-
-#PyCharm files
-/.idea

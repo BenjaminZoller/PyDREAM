@@ -1,3 +1,0 @@
-include README.rst
-include pydream/examples/corm/exp_data/*.txt
-include pydream/examples/robertson/exp_data/*.txt

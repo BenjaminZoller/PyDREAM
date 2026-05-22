@@ -6,11 +6,9 @@ from . import Dream_shared_vars
 from .Dream import Dream, DreamPool
 from .model import Model
 import traceback
-from typing import Callable, Iterable, List, Optional, Tuple, Any
 
-def run_dream(parameters: Iterable[Any], likelihood: Callable, nchains: int = 5, niterations: int = 50000, 
-              start: Optional[Iterable[Any]] = None, restart: bool = False, verbose: bool = True, 
-              nverbose: int = 10, tempering: bool = False, mp_context: Optional[Any] = None, **kwargs) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+
+def run_dream(parameters, likelihood, nchains=5, niterations=50000, start=None, restart=False, verbose=True, nverbose=10, tempering=False, mp_context=None, **kwargs):
     """Run DREAM given a set of parameters with priors and a likelihood function.
 
     Parameters
@@ -88,7 +86,7 @@ def run_dream(parameters: Iterable[Any], likelihood: Callable, nchains: int = 5,
     return sampled_params, log_ps
 
 
-def _sample_dream(args: Tuple[Dream, int, Optional[np.ndarray], bool, int]) -> Tuple[np.ndarray, np.ndarray]:
+def _sample_dream(args):
 
     try: 
         dream_instance = args[0]
@@ -130,7 +128,7 @@ def _sample_dream(args: Tuple[Dream, int, Optional[np.ndarray], bool, int]) -> T
 
     return sampled_params, log_ps
 
-def _sample_dream_pt(nchains: int, niterations: int, step_instance: Dream, start: Optional[np.ndarray], pool: Any, verbose: bool) -> Tuple[np.ndarray, np.ndarray]:
+def _sample_dream_pt(nchains, niterations, step_instance, start, pool, verbose):
     
     T = np.zeros((nchains))
     T[0] = 1.
@@ -237,7 +235,7 @@ def _sample_dream_pt(nchains: int, niterations: int, step_instance: Dream, start
     return sampled_params, log_ps
             
 
-def _sample_dream_pt_chain(args: Tuple[Dream, np.ndarray, float, float, float]) -> Tuple[np.ndarray, float, float, Dream]:
+def _sample_dream_pt_chain(args):
 
     dream_instance = args[0]
     start = args[1]
@@ -249,11 +247,11 @@ def _sample_dream_pt_chain(args: Tuple[Dream, np.ndarray, float, float, float]) 
     
     return q1, logprior1, loglike1, dream_instance
 
-def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Dream, start_pt: Optional[Iterable[Any]] = None, mp_context: Optional[Any] = None) -> DreamPool:
+def _setup_mp_dream_pool(nchains, niterations, step_instance, start_pt=None, mp_context=None):
     
     min_njobs = (2*len(step_instance.DEpairs))+1
     if nchains < min_njobs:
-        raise Exception(f'Dream should be run with at least (2*DEpairs)+1 number of chains.  For current algorithmic settings, set njobs>={min_njobs}.')
+        raise Exception('Dream should be run with at least (2*DEpairs)+1 number of chains.  For current algorithmic settings, set njobs>=%s.' %str(min_njobs))
     if step_instance.history_file != False:
         old_history = np.load(step_instance.history_file)
         len_old_history = len(old_history.flatten())
@@ -272,7 +270,7 @@ def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Dream, s
     min_nseedchains = 2*len(step_instance.DEpairs)*nchains
     
     if step_instance.nseedchains < min_nseedchains:
-        raise Exception(f'The size of the seeded starting history is insufficient.  Increase nseedchains>={min_nseedchains}.')
+        raise Exception('The size of the seeded starting history is insufficient.  Increase nseedchains>=%s.' %str(min_nseedchains))
         
     current_position_dim = nchains*step_instance.total_var_dimension
     # Get context to define arrays
@@ -297,6 +295,7 @@ def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Dream, s
     shared_nchains = ctx.Value('i', nchains)
     n = ctx.Value('i', 0)
     tf = ctx.Value('c', b'F')
+    burnin_barrier = ctx.Barrier(nchains)
     
     if step_instance.crossover_burnin is None:
         step_instance.crossover_burnin = int(np.floor(niterations/10))
@@ -309,13 +308,11 @@ def _setup_mp_dream_pool(nchains: int, niterations: int, step_instance: Dream, s
     p = DreamPool(nchains, context=ctx, initializer=_mp_dream_init,
                   initargs=(history_arr, current_position_arr, shared_nchains,
                             crossover_probabilities, ncrossover_updates, delta_m,
-                            gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf,))
-    # p = mp.pool.ThreadPool(nchains, initializer=_mp_dream_init, initargs=(history_arr, current_position_arr, shared_nchains, crossover_probabilities, ncrossover_updates, delta_m, gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf, ))
-    # p = mp.Pool(nchains, initializer=_mp_dream_init, initargs=(history_arr, current_position_arr, shared_nchains, crossover_probabilities, ncrossover_updates, delta_m, gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf, ))
+                            gamma_probabilities, ngamma_updates, delta_m_gamma, n, tf, burnin_barrier))
 
     return p
 
-def _mp_dream_init(arr, cp_arr, nchains, crossover_probs, ncrossover_updates, delta_m, gamma_probs, ngamma_updates, delta_m_gamma, val, switch):
+def _mp_dream_init(arr, cp_arr, nchains, crossover_probs, ncrossover_updates, delta_m, gamma_probs, ngamma_updates, delta_m_gamma, val, switch, burnin_barrier):
       Dream_shared_vars.history = arr
       Dream_shared_vars.current_positions = cp_arr
       Dream_shared_vars.nchains = nchains
@@ -327,3 +324,4 @@ def _mp_dream_init(arr, cp_arr, nchains, crossover_probs, ncrossover_updates, de
       Dream_shared_vars.delta_m_gamma = delta_m_gamma
       Dream_shared_vars.count = val
       Dream_shared_vars.history_seeded = switch
+      Dream_shared_vars.burnin_barrier = burnin_barrier

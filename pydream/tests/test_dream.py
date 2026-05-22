@@ -6,7 +6,8 @@ Created on Thu Oct  9 16:50:59 2014
 """
 
 import unittest
-from os import remove
+import os
+import tempfile
 
 import multiprocessing as mp
 import numpy as np
@@ -396,7 +397,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         """Test that history in memory matches with that recorded for test one-dimensional model."""
         self.param, self.like = onedmodel()
         model = Model(self.like, self.param)
-        step = Dream(model=model, model_name='test_history_recording')
+        step = Dream(model=model, model_name='test_history_recording', save_history=False)
         history_arr = mp.Array('d', [0]*4*step.total_var_dimension)
         n = mp.Value('i', 0)
         nchains = mp.Value('i', 3)
@@ -410,15 +411,12 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
-        remove('test_history_recording_DREAM_chain_history.npy')
-        remove('test_history_recording_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_history_recording_DREAM_chain_adapted_gammalevelprob.npy')
         
     def test_history_recording_multidim_model(self):
         """Test that history in memory matches with that recorded for test multi-dimensional model."""
         self.param, self.like = multidmodel()
         model = Model(self.like, self.param)
-        dream = Dream(model=model, model_name='test_history_recording')
+        dream = Dream(model=model, model_name='test_history_recording', save_history=False)
         history_arr = mp.Array('d', [0]*4*dream.total_var_dimension*3)
         n = mp.Value('i', 0)
         nchains = mp.Value('i', 3)
@@ -432,74 +430,66 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         history_arr_np = np.frombuffer(pydream.Dream_shared_vars.history.get_obj())
         history_arr_np_reshaped = history_arr_np.reshape(np.shape(test_history))
         self.assertIs(np.array_equal(history_arr_np_reshaped, test_history), True)
-        remove('test_history_recording_DREAM_chain_history.npy')
-        remove('test_history_recording_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_history_recording_DREAM_chain_adapted_gammalevelprob.npy')
      
     def test_history_saving_to_disc_sanitycheck(self):
         """Test that history when saved to disc and reloaded matches."""
-        self.param, self.like = multidmodel()
-        model = Model(self.like, self.param)
-        step = Dream(model=model)
-        history = np.array([[5, 8, 10, 12], [13, 18, 20, 21], [1, .5, 9, 1e9]])
-        step.save_history_to_disc(history, 'testing_history_save_')
-        history_saved = np.load('testing_history_save_DREAM_chain_history.npy')
-        self.assertIs(np.array_equal(history, history_saved), True)
-        remove('testing_history_save_DREAM_chain_history.npy')
-        remove('testing_history_save_DREAM_chain_adapted_crossoverprob.npy')
-        remove('testing_history_save_DREAM_chain_adapted_gammalevelprob.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = os.path.join(tmpdir, 'testing_history_save_')
+            self.param, self.like = multidmodel()
+            model = Model(self.like, self.param)
+            step = Dream(model=model)
+            history = np.array([[5, 8, 10, 12], [13, 18, 20, 21], [1, .5, 9, 1e9]])
+            step.save_history_to_disc(history, prefix)
+            history_saved = np.load(prefix + 'DREAM_chain_history.npy')
+            self.assertIs(np.array_equal(history, history_saved), True)
     
     def test_history_file_loading(self):
         """Test that when a history file is provided it is loaded and appended to the new history."""
-        self.param, self.like = onedmodel()
-        model = Model(self.like, self.param)
-        step = Dream(model=model)
-        old_history = np.array([1, 3, 5, 7, 9, 11])
-        step.save_history_to_disc(old_history, 'testing_history_load_')
-        sampled_params, logps = run_dream(self.param, self.like, niterations=3, nchains=3, history_thin=1, history_file='testing_history_load_DREAM_chain_history.npy', save_history=True, model_name='test_history_loading', verbose=False)
-        new_history = np.load('test_history_loading_DREAM_chain_history.npy')
-        self.assertEqual(len(new_history), (len(old_history.flatten())+(3*step.total_var_dimension*3)))
-        new_history_seed = new_history[:len(old_history.flatten())]
-        new_history_seed_reshaped = new_history_seed.reshape(old_history.shape)
-        self.assertIs(np.array_equal(old_history, new_history_seed_reshaped), True)
-        
-        added_history = new_history[len(old_history.flatten())::]
-        sorted_history = np.sort(added_history)
-        sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-
-        for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
-            self.assertEqual(sampled_param, history_param)
-        remove('testing_history_load_DREAM_chain_history.npy')
-        remove('testing_history_load_DREAM_chain_adapted_crossoverprob.npy')
-        remove('testing_history_load_DREAM_chain_adapted_gammalevelprob.npy')
-        remove('test_history_loading_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_history_loading_DREAM_chain_adapted_gammalevelprob.npy')
-        remove('test_history_loading_DREAM_chain_history.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix_load = os.path.join(tmpdir, 'testing_history_load_')
+            prefix_save = os.path.join(tmpdir, 'test_history_loading_')
+            self.param, self.like = onedmodel()
+            model = Model(self.like, self.param)
+            step = Dream(model=model)
+            old_history = np.array([1, 3, 5, 7, 9, 11])
+            step.save_history_to_disc(old_history, prefix_load)
+            sampled_params, logps = run_dream(self.param, self.like, niterations=3, nchains=3, history_thin=1, history_file=prefix_load+'DREAM_chain_history.npy', save_history=True, model_name=prefix_save[:-1], verbose=False)
+            new_history = np.load(prefix_save+'DREAM_chain_history.npy')
+            self.assertEqual(len(new_history), (len(old_history.flatten())+(3*step.total_var_dimension*3)))
+            new_history_seed = new_history[:len(old_history.flatten())]
+            new_history_seed_reshaped = new_history_seed.reshape(old_history.shape)
+            self.assertIs(np.array_equal(old_history, new_history_seed_reshaped), True)
+            
+            added_history = new_history[len(old_history.flatten())::]
+            sorted_history = np.sort(added_history)
+            sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
+    
+            for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
+                self.assertEqual(sampled_param, history_param)
         
     def test_crossover_file_loading(self):
         """Test that when a crossover file is loaded the crossover values are set to the file values and not adapted."""
-        self.param, self.like = multidmodel()
-        old_crossovervals = np.array([.45, .20, .35])
-        np.save('testing_crossoverval_load_DREAM.npy', old_crossovervals)
-        model = Model(self.like, self.param)
-        dream = Dream(model=model, crossover_file='testing_crossoverval_load_DREAM.npy', save_history=True, model_name='testing_crossover_load')
-        self.assertTrue(np.array_equal(dream.CR_probabilities, old_crossovervals))
-        
-        sampled_vals, logps = run_dream(self.param, self.like, niterations=100, nchains=3, crossover_file='testing_crossoverval_load_DREAM.npy', model_name='testing_crossover_load', save_history=True, verbose=False)
-        
-        crossover_vals_after_sampling = np.load('testing_crossover_load_DREAM_chain_adapted_crossoverprob.npy')
-        self.assertIs(np.array_equal(crossover_vals_after_sampling, old_crossovervals), True)
-        remove('testing_crossover_load_DREAM_chain_adapted_crossoverprob.npy')
-        remove('testing_crossover_load_DREAM_chain_adapted_gammalevelprob.npy')
-        remove('testing_crossoverval_load_DREAM.npy')
-        remove('testing_crossover_load_DREAM_chain_history.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cr_file = os.path.join(tmpdir, 'testing_crossoverval_load_DREAM.npy')
+            prefix_save = os.path.join(tmpdir, 'testing_crossover_load_')
+            self.param, self.like = multidmodel()
+            old_crossovervals = np.array([.45, .20, .35])
+            np.save(cr_file, old_crossovervals)
+            model = Model(self.like, self.param)
+            dream = Dream(model=model, crossover_file=cr_file, save_history=True, model_name=prefix_save[:-1])
+            self.assertTrue(np.array_equal(dream.CR_probabilities, old_crossovervals))
+            
+            sampled_vals, logps = run_dream(self.param, self.like, niterations=100, nchains=3, crossover_file=cr_file, model_name=prefix_save[:-1], save_history=True, verbose=False)
+            
+            crossover_vals_after_sampling = np.load(prefix_save+'DREAM_chain_adapted_crossoverprob.npy')
+            self.assertIs(np.array_equal(crossover_vals_after_sampling, old_crossovervals), True)
 
     def test_astep_onedmodel(self):
         """Test that a single step with a one-dimensional model returns values of the expected type and a move that is expected or not given the test logp."""
         """Test a single step with a one-dimensional model with a normal parameter."""
         self.param, self.like = onedmodel()
         model = Model(self.like, self.param)
-        dream = Dream(model=model, save_history=False, verbose=False)
+        dream = Dream(model=model, save_history=False, verbose=False, crossover_burnin=100)
         #Even though we're calling the steps separately we need to call these functions
         # to initialize the shared memory arrays that are called in the step fxn
         pool = _setup_mp_dream_pool(nchains=3, niterations=10, step_instance=dream)
@@ -531,7 +521,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
 
         self.param, self.like = multidmodel_uniform()
         model = Model(self.like, self.param)
-        dream = Dream(model=model, save_history=False, verbose=False)
+        dream = Dream(model=model, save_history=False, verbose=False, crossover_burnin=100)
 
         # Even though we're calling the steps separately we need to call these functions
         # to initialize the shared memory arrays that are called in the step fxn
@@ -563,7 +553,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         """Test the multiprocessing DREAM sample function returns data of the correct shape independently of the run_dream wrapper."""
         self.params, self.like = multidmodel()
         model = Model(self.like, self.params)
-        dream = Dream(model=model, verbose=False, save_history=False)
+        dream = Dream(model=model, verbose=False, save_history=False, crossover_burnin=100)
 
         #Even though the pool won't be used, we need to initialize the shared variables.
         pool = _setup_mp_dream_pool(nchains=3, niterations=10, step_instance=dream)
@@ -585,7 +575,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         """test that the parallel tempering DREAM sampling function returns values of the expected shape."""
         self.params, self.like = multidmodel()
         model = Model(self.like, self.params)
-        dream = Dream(model=model, verbose=False, save_history=False)
+        dream = Dream(model=model, verbose=False, save_history=False, crossover_burnin=100)
 
         #The pool will be used within the fxn and, also, we need to initialize the shared variables.
         pool = _setup_mp_dream_pool(nchains=3, niterations=10, step_instance=dream)
@@ -606,7 +596,7 @@ class Test_Dream_Algorithm_Components(unittest.TestCase):
         """Test individual chain sampling function for parallel tempering returns an object of the correct type and with a better logp."""
         self.params, self.like = multidmodel()
         model = Model(self.like, self.params)
-        dream = Dream(model=model, verbose=False, save_history=False)
+        dream = Dream(model=model, verbose=False, save_history=False, crossover_burnin=100)
 
         # Even though the pool won't be used, we need to initialize the shared variables.
         pool = _setup_mp_dream_pool(nchains=3, niterations=10, step_instance=dream)
@@ -626,81 +616,68 @@ class Test_Dream_Full_Algorithm(unittest.TestCase):
 
     def test_history_correct_after_sampling_simple_model(self):
         """Test that the history saved matches with the returned sampled parameter values for a one-dimensional test model."""
-        self.param, self.like = onedmodel()
-        model = Model(self.like, self.param)
-        step = Dream(model=model, save_history=True, history_thin=1, model_name='test_history_correct', adapt_crossover=False)
-        sampled_params, logps = run_dream(self.param, self.like, niterations=10, nchains=5, save_history=True, history_thin=1, model_name='test_history_correct', adapt_crossover=False, verbose=False)
-        history = np.load('test_history_correct_DREAM_chain_history.npy')
-        self.assertEqual(len(history), step.total_var_dimension*((10*5/step.history_thin)+step.nseedchains))
-        history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
-        sorted_history = np.sort(history_no_seedchains)
-        sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-
-        for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
-            self.assertEqual(sampled_param, history_param)
-
-        remove('test_history_correct_DREAM_chain_history.npy')
-        remove('test_history_correct_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_history_correct_DREAM_chain_adapted_gammalevelprob.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = os.path.join(tmpdir, 'test_history_correct_')
+            self.param, self.like = onedmodel()
+            model = Model(self.like, self.param)
+            step = Dream(model=model, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False)
+            sampled_params, logps = run_dream(self.param, self.like, niterations=10, nchains=5, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False, verbose=False)
+            history = np.load(prefix+'DREAM_chain_history.npy')
+            self.assertEqual(len(history), step.total_var_dimension*((10*5/step.history_thin)+step.nseedchains))
+            history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
+            sorted_history = np.sort(history_no_seedchains)
+            sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
+    
+            for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
+                self.assertEqual(sampled_param, history_param)
             
         
     def test_history_correct_after_sampling_multidim_model(self):
         """Test that the history saved matches with the returned sampled parameter values for a multi-dimensional test model."""
-        self.param, self.like = multidmodel()
-        model = Model(self.like, self.param)
-        step = Dream(model=model, save_history=True, history_thin=1, model_name='test_history_correct', adapt_crossover=False)
-        sampled_params, logps = run_dream(self.param, self.like, niterations=10, nchains=5, save_history=True, history_thin=1, model_name='test_history_correct', adapt_crossover=False, verbose=False)
-        history = np.load('test_history_correct_DREAM_chain_history.npy')
-
-        self.assertEqual(len(history), step.total_var_dimension*((10*5/step.history_thin)+step.nseedchains))
-        history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
-
-        sorted_history = np.sort(history_no_seedchains)
-        sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
-
-        for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
-            self.assertEqual(sampled_param, history_param)
-
-        remove('test_history_correct_DREAM_chain_history.npy')
-        remove('test_history_correct_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_history_correct_DREAM_chain_adapted_gammalevelprob.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = os.path.join(tmpdir, 'test_history_correct_')
+            self.param, self.like = multidmodel()
+            model = Model(self.like, self.param)
+            step = Dream(model=model, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False)
+            sampled_params, logps = run_dream(self.param, self.like, niterations=10, nchains=5, save_history=True, history_thin=1, model_name=prefix[:-1], adapt_crossover=False, verbose=False)
+            history = np.load(prefix+'DREAM_chain_history.npy')
+    
+            self.assertEqual(len(history), step.total_var_dimension*((10*5/step.history_thin)+step.nseedchains))
+            history_no_seedchains = history[(step.total_var_dimension*step.nseedchains)::]
+    
+            sorted_history = np.sort(history_no_seedchains)
+            sorted_sampled_params = np.sort(np.array(sampled_params).flatten())
+    
+            for sampled_param, history_param in zip(sorted_history, sorted_sampled_params):
+                self.assertEqual(sampled_param, history_param)
 
     def test_boundaries_obeyed_aftersampling(self):
         """Test that boundaries are respected if included."""
 
-        self.param, self.like = multidmodel_uniform()
-        model = Model(self.like, self.param)
-        step = Dream(model=model, save_history=True, history_thin=1, model_name='test_boundaries',
-                     adapt_crossover=False, hardboundaries=True, nverbose=10)
-        sampled_params, logps = run_dream(self.param, self.like, niterations=1000, nchains=5, save_history=True,
-                                          history_thin=1, model_name='test_boundaries', adapt_crossover=False,
-                                          verbose=True, hardboundaries=True, nverbose=10)
-        history = np.load('test_boundaries_DREAM_chain_history.npy')
-        variables = model.sampled_parameters
-        dim = 0
-        for var in variables:
-            interval = var.interval()
-            dim += var.dsize
-
-        lowerbound = interval[0]
-        upperbound = interval[1]
-
-        npoints = int(len(history)/float(dim))
-        reshaped_history = np.reshape(history, (npoints, dim))
-
-        print('reshaped history: ',reshaped_history)
-        print('upper ',upperbound,' and lower ',lowerbound)
-        print('lower bounds: ',(reshaped_history<lowerbound).any())
-        print('upper bounds: ',(reshaped_history>upperbound).any())
-        print('disobeyed lower: ',reshaped_history[reshaped_history<lowerbound])
-        print('disobeyed upper: ', reshaped_history[reshaped_history>upperbound])
-
-        self.assertFalse((reshaped_history<lowerbound).any())
-        self.assertFalse((reshaped_history>upperbound).any())
-
-        remove('test_boundaries_DREAM_chain_adapted_crossoverprob.npy')
-        remove('test_boundaries_DREAM_chain_adapted_gammalevelprob.npy')
-        remove('test_boundaries_DREAM_chain_history.npy')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = os.path.join(tmpdir, 'test_boundaries_')
+            self.param, self.like = multidmodel_uniform()
+            model = Model(self.like, self.param)
+            step = Dream(model=model, save_history=True, history_thin=1, model_name=prefix[:-1],
+                         adapt_crossover=False, hardboundaries=True, nverbose=10)
+            sampled_params, logps = run_dream(self.param, self.like, niterations=1000, nchains=5, save_history=True,
+                                              history_thin=1, model_name=prefix[:-1], adapt_crossover=False,
+                                              verbose=True, hardboundaries=True, nverbose=10)
+            history = np.load(prefix+'DREAM_chain_history.npy')
+            variables = model.sampled_parameters
+            dim = 0
+            for var in variables:
+                interval = var.interval()
+                dim += var.dsize
+    
+            lowerbound = interval[0]
+            upperbound = interval[1]
+    
+            npoints = int(len(history)/float(dim))
+            reshaped_history = np.reshape(history, (npoints, dim))
+    
+            self.assertFalse((reshaped_history<lowerbound).any())
+            self.assertFalse((reshaped_history>upperbound).any())
 
 
 class Test_DREAM_examples(unittest.TestCase):
@@ -710,6 +687,7 @@ class Test_DREAM_examples(unittest.TestCase):
         nchains = corm_kwargs['nchains']
         corm_kwargs['niterations'] = 100
         corm_kwargs['verbose'] = True
+        corm_kwargs['save_history'] = False
 
         valid_start = np.array([-2.5, 0.4, -2.1, 0.1, -0.3, -2.7, -0.7, 2.0, 0.0, -0.6, 2.0, -0.4])
         corm_kwargs['start'] = [valid_start] * nchains
@@ -726,9 +704,6 @@ class Test_DREAM_examples(unittest.TestCase):
         self.assertEqual(len(logps), nchains)
         self.assertEqual(len(logps[0]), 100)
         self.assertEqual(len(logps[0][0]), 1)
-        remove('corm_dreamzs_5chain_DREAM_chain_adapted_crossoverprob.npy')
-        remove('corm_dreamzs_5chain_DREAM_chain_adapted_gammalevelprob.npy')
-        remove('corm_dreamzs_5chain_DREAM_chain_history.npy')
 
     def test_mixturemodel_example(self):
         """Test that the mixture model example runs and returns values of the expected shape."""
@@ -749,7 +724,10 @@ class Test_DREAM_examples(unittest.TestCase):
         self.assertEqual(len(logps), nchains)
         self.assertEqual(len(logps[0]), 100)
         self.assertEqual(len(logps[0][0]), 1)
-        remove('mixturemodel_seed.npy')
+        try:
+            os.remove('mixturemodel_seed.npy')
+        except OSError:
+            pass
 
     def test_ndimgaussian_example(self):
         """Test that the n-dimensional gaussian example runs and returns values of the expected shape."""
@@ -770,7 +748,10 @@ class Test_DREAM_examples(unittest.TestCase):
         self.assertEqual(len(logps), nchains)
         self.assertEqual(len(logps[0]), 100)
         self.assertEqual(len(logps[0][0]), 1)
-        remove('ndim_gaussian_seed.npy')
+        try:
+            os.remove('ndim_gaussian_seed.npy')
+        except OSError:
+            pass
 
     def test_robertson_example(self):
         """Test that the Robertson example runs and returns values of the expected shape."""

@@ -206,7 +206,7 @@ class Dream:
                     Dream_shared_vars.nchains.value -= 1
 
                 # Assuming the shared variables exist, seed the history with nseedchain draws from the prior
-                with Dream_shared_vars.history_seeded.get_lock() and Dream_shared_vars.history.get_lock():
+                with Dream_shared_vars.history_seeded.get_lock(), Dream_shared_vars.history.get_lock():
                     if not self.history_file:
                         if self.verbose:
                             print('History file not loaded.')
@@ -261,7 +261,7 @@ class Dream:
             #Select gamma size level
             gamma_level = self.set_gamma_level(self.gamma_probabilities, self.gamma_level_values)
         
-            with Dream_shared_vars.history.get_lock() and Dream_shared_vars.count.get_lock():
+            with Dream_shared_vars.history.get_lock(), Dream_shared_vars.count.get_lock():
                 #Generate proposal points
                 if not run_snooker:
                     proposed_pts = self.generate_proposal_points(self.multitry, q0, CR, DEpair_choice, gamma_level, snooker=False)
@@ -298,7 +298,7 @@ class Dream:
                 
             
                 #Draw reference points around the randomly selected proposal point
-                with Dream_shared_vars.history.get_lock() and Dream_shared_vars.count.get_lock():
+                with Dream_shared_vars.history.get_lock(), Dream_shared_vars.count.get_lock():
                     if run_snooker:
                         reference_pts, snooker_logp_ref, z_ref = self.generate_proposal_points(self.multitry-1, q_proposal, CR, DEpair_choice, gamma_level, snooker=run_snooker)
                     else:
@@ -332,7 +332,7 @@ class Dream:
                 if run_snooker:
                     total_proposed_logp = q_logp + snooker_logp_prop
                     norm = np.linalg.norm(q0-z)
-                    snooker_current_logp = np.log(norm, where=norm != 0)*(self.total_var_dimension-1)
+                    snooker_current_logp = np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf
                     total_old_logp = self.last_logp + snooker_current_logp
                     
                     q_new = metrop_select(np.nan_to_num(total_proposed_logp - total_old_logp), q, q0)
@@ -364,7 +364,7 @@ class Dream:
         
             #Place new point in history given history thinning rate
             if self.iter % self.history_thin == 0:
-                with Dream_shared_vars.history.get_lock() and Dream_shared_vars.count.get_lock():
+                with Dream_shared_vars.history.get_lock(), Dream_shared_vars.count.get_lock():
                     self.record_history(self.nseedchains, self.total_var_dimension, q_new, self.len_history)
             
             if self.iter < self.crossover_burnin+1:
@@ -375,7 +375,7 @@ class Dream:
             #Don't do this for the first 10 iterations to give all chains a chance to fill in the shared current position array
             #Don't count iterations where gamma was set to 1 in crossover adaptation calculations
             if self.adapt_crossover and self.iter > 10 and self.iter < self.crossover_burnin and not np.any(np.array(self.gamma)==1.0):
-                with Dream_shared_vars.cross_probs.get_lock() and Dream_shared_vars.count.get_lock() and Dream_shared_vars.ncr_updates.get_lock() and Dream_shared_vars.current_positions.get_lock() and Dream_shared_vars.delta_m.get_lock():
+                with Dream_shared_vars.cross_probs.get_lock(), Dream_shared_vars.count.get_lock(), Dream_shared_vars.ncr_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(), Dream_shared_vars.delta_m.get_lock():
                     #If a snooker update was run, then regardless of the originally selected CR, a CR=1.0 was used.
                     if not run_snooker:
                         self.CR_probabilities = self.estimate_crossover_probabilities(self.total_var_dimension, q0, q_new, CR)
@@ -385,32 +385,24 @@ class Dream:
 
 
             if self.adapt_gamma and self.iter > 10 and self.iter < self.crossover_burnin and not np.any(np.array(self.gamma)==1.0) and not run_snooker:
-               with Dream_shared_vars.gamma_level_probs.get_lock() and Dream_shared_vars.count.get_lock() and Dream_shared_vars.ngamma_updates.get_lock() and Dream_shared_vars.current_positions.get_lock() and Dream_shared_vars.delta_m_gamma.get_lock():
+               with Dream_shared_vars.gamma_level_probs.get_lock(), Dream_shared_vars.count.get_lock(), Dream_shared_vars.ngamma_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(), Dream_shared_vars.delta_m_gamma.get_lock():
                    self.gamma_probabilities = self.estimate_gamma_level_probs(self.total_var_dimension, q0, q_new, gamma_level)
             
             if self.iter == self.crossover_burnin:
-                #To ensure all chains use the same fitted shared probability values, wait for all parallel chains to reach end of burnin period before grabbing shared probabilities
-                with Dream_shared_vars.nchains.get_lock():
-                    Dream_shared_vars.nchains.value += 1 
-                    nchains_finished_burnin = Dream_shared_vars.nchains.value
                 
                 if self.adapt_gamma:
-                    with Dream_shared_vars.gamma_level_probs.get_lock() and Dream_shared_vars.count.get_lock() and Dream_shared_vars.ngamma_updates.get_lock() and Dream_shared_vars.current_positions.get_lock() and Dream_shared_vars.delta_m_gamma.get_lock():
+                    with Dream_shared_vars.gamma_level_probs.get_lock(), Dream_shared_vars.count.get_lock(), Dream_shared_vars.ngamma_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(), Dream_shared_vars.delta_m_gamma.get_lock():
                         self.gamma_probabilities = self.estimate_gamma_level_probs(self.total_var_dimension, q0, q_new, gamma_level)
                 
                 if self.adapt_crossover:
-                    with Dream_shared_vars.cross_probs.get_lock() and Dream_shared_vars.count.get_lock() and Dream_shared_vars.ncr_updates.get_lock() and Dream_shared_vars.current_positions.get_lock() and Dream_shared_vars.delta_m.get_lock():
+                    with Dream_shared_vars.cross_probs.get_lock(), Dream_shared_vars.count.get_lock(), Dream_shared_vars.ncr_updates.get_lock(), Dream_shared_vars.current_positions.get_lock(), Dream_shared_vars.delta_m.get_lock():
                         #If a snooker update was run, then regardless of the originally selected CR, a CR=1.0 was used.
                         if not run_snooker:
                             self.CR_probabilities = self.estimate_crossover_probabilities(self.total_var_dimension, q0, q_new, CR) 
                         else:
                             self.CR_probabilities = self.estimate_crossover_probabilities(self.total_var_dimension, q0, q_new, CR=1)
                 
-                while nchains_finished_burnin != self.nchains:
-                    time.sleep(30)
-                    with Dream_shared_vars.nchains.get_lock():
-                        nchains_finished_burnin = Dream_shared_vars.nchains.value    
-                time.sleep(10)
+                Dream_shared_vars.burnin_barrier.wait()
 
                 if self.adapt_gamma:
                     with Dream_shared_vars.gamma_level_probs.get_lock():
@@ -440,7 +432,7 @@ class Dream:
         """
         
         if self.nchains == None:
-            current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj())
+            current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj(), dtype=np.float64)
             self.nchains = len(current_positions)//ndimensions
         
         if self.chain_n == None:
@@ -475,7 +467,7 @@ class Dream:
 
         Dream_shared_vars.ncr_updates[m_loc] += 1
         
-        current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj())
+        current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj(), dtype=np.float64)
 
         current_positions = current_positions.reshape((self.nchains, ndim))
         
@@ -518,7 +510,7 @@ class Dream:
         gamma_level : int
             gamma level selected for this step"""
 
-        current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj())
+        current_positions = np.frombuffer(Dream_shared_vars.current_positions.get_obj(), dtype=np.float64)
 
         current_positions = current_positions.reshape((self.nchains, ndim))
 
@@ -825,22 +817,22 @@ class Dream:
             
             #Orthogonal projection of chains_to_projected onto projection vector
             diff_chains_to_be_projected = [(chains_to_be_projected[point][0]-chains_to_be_projected[point][1]) for point in range(n_proposed_pts)]       
-            zP = np.nan_to_num(np.array([(np.sum(diff_chains_to_be_projected[point]*proj_vec_diff[point])/D[point] *proj_vec_diff[point]) for point in range(n_proposed_pts)]))
+            zP = np.nan_to_num(np.array([(np.sum(diff_chains_to_be_projected[point]*proj_vec_diff[point])/D[point] *proj_vec_diff[point]) if D[point] != 0 else np.zeros_like(proj_vec_diff[point]) for point in range(n_proposed_pts)]))
             dx = self.gamma*zP
             proposed_pts = [q0 + dx[point] for point in range(n_proposed_pts)]
             norms = [np.linalg.norm(proposed_pts[point] - sampled_history_pt[point]) for point in range(n_proposed_pts)]
-            snooker_logp = [np.log(norm, where= norm != 0)*(self.total_var_dimension-1) for norm in norms]
+            snooker_logp = [np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf for norm in norms]
 
         else:
             D = np.dot(proj_vec_diff, proj_vec_diff)
 
             #Orthogonal projection of chains_to_projected onto projection vector  
             diff_chains_to_be_projected = chains_to_be_projected[0]-chains_to_be_projected[1]
-            zP = np.nan_to_num(np.array([np.sum(np.divide((diff_chains_to_be_projected*proj_vec_diff), D, where= D != 0))]))*proj_vec_diff
+            zP = np.nan_to_num(np.array([np.sum((diff_chains_to_be_projected*proj_vec_diff) / D if D != 0 else 0.0)]))*proj_vec_diff
             dx = self.gamma*zP
             proposed_pts = q0 + dx
             norm = np.linalg.norm(proposed_pts-sampled_history_pt)
-            snooker_logp = np.log(norm, where= norm != 0)*(self.total_var_dimension-1)
+            snooker_logp = np.log(norm)*(self.total_var_dimension-1) if norm != 0 else -np.inf
         
         return proposed_pts, snooker_logp, sampled_history_pt
     
