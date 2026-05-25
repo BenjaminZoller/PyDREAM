@@ -36,3 +36,6 @@ ENV/
 # PyDREAM specific output files
 pydream/examples/mixturemodel/*.mat
 pydream/examples/ndim_gaussian/*.mat
+
+# Documentation build files
+docs/_build/

@@ -66,3 +66,12 @@ Upload distributions to PyPI:
 ```bash
 python -m twine upload dist/*
 ```
+
+## Building the Documentation
+
+To build the HTML documentation locally:
+
+```bash
+pip install -e ".[docs]"
+cd docs
+make html

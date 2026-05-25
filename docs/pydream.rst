@@ -1,25 +1,22 @@
-pydream package
-===============
+Module Reference
+================
 
-pydream.Dream module
---------------------
-
-.. autoclass:: pydream.Dream.Dream
-    :members: __init__
-
-pydream.core module
--------------------
+pydream.core
+------------
 
 .. automodule:: pydream.core
     :members:
     :show-inheritance:
 
-pydream.parameters module
--------------------------
+pydream.Dream
+-------------
 
-.. autoclass:: pydream.parameters.SampledParam
-    :members: __init__
+.. autoclass:: pydream.Dream.Dream
+    :members:
 
-.. autoclass:: pydream.parameters.FlatParam
-    :members: __init__
+pydream.parameters
+------------------
 
+.. automodule:: pydream.parameters
+    :members:
+    :show-inheritance:
