@@ -4,44 +4,45 @@
 
 ## Objective
 
-Modernize and maintain the `pydream` codebase for:
+Maintain and modernize `pydream` for:
 
 * Python >= 3.11
 * NumPy >= 2.x
 * modern scientific Python tooling
-* improved maintainability and code quality
 
-while preserving the original DREAM sampling behavior and statistical semantics.
+while preserving:
+
+* DREAM sampling behavior
+* statistical semantics
+* public API compatibility unless explicitly requested otherwise
 
 ---
 
 # Core Constraints
 
-## 1. Preserve Mathematical Semantics
+## 1. Preserve Scientific Behavior
 
-The DREAM sampling algorithm and its statistical behavior must remain unchanged.
-
-Do NOT introduce changes that alter:
+Do NOT alter:
 
 * proposal generation
 * acceptance logic
 * convergence behavior
-* chain evolution
+* chain evolution semantics
 * probability calculations
 * multiprocessing sampling semantics
 
-Performance improvements and refactoring are acceptable only if statistical behavior remains equivalent.
+Refactoring and optimization are acceptable only if statistical behavior remains equivalent.
 
 ---
 
-## 2. Prefer Minimal, Targeted Changes
+## 2. Prefer Minimal, Localized Changes
 
 Prefer:
 
-* localized fixes
 * incremental refactors
-* explicit code changes
-* backwards-compatible improvements
+* localized fixes
+* backward-compatible improvements
+* explicit validation and error handling
 
 Avoid:
 
@@ -51,73 +52,59 @@ Avoid:
 
 ---
 
-## 3. Modern Python Compatibility
+## 3. Maintain Numerical Robustness
 
-The codebase targets:
+When modifying numerical or stochastic code:
 
-* Python 3.11+
-* NumPy 2.x+
-
-Remove obsolete compatibility code for:
-
-* Python 2.x
-* deprecated NumPy aliases
-* legacy multiprocessing patterns
-
----
-
-## 4. Maintain Scientific Robustness
+* preserve array shape semantics
+* avoid hidden dtype changes
+* avoid unnecessary global RNG usage
+* preserve multiprocessing safety
+* fail loudly on invalid numerical states
 
 Scientific correctness takes precedence over stylistic preferences.
 
-When modifying stochastic or numerical code:
-
-* preserve numerical stability
-* avoid hidden dtype changes
-* preserve array shape semantics
-* avoid introducing nondeterministic multiprocessing bugs
-
 ---
 
-# Modernization Guidelines
+# Compatibility Requirements
 
-## NumPy 2.x Compatibility
+## Python
 
-Replace deprecated aliases:
+Target:
 
-* `np.float` → `float` or `np.float64`
-* `np.int` → `int` or explicit integer dtype
-* `np.bool` → `bool`
-* `np.object` → `object`
-
-Verify:
-
-* boolean masking behavior
-* broadcasting semantics
-* `np.frombuffer` shared-memory usage
-* `np.nan_to_num` compatibility
-* `np.linalg` API usage
-
----
-
-## Python 3.11+ Compatibility
-
-Modernize:
-
-* multiprocessing context handling
-* process spawning behavior
-* daemon process interactions
-* outdated unittest compatibility code
+* Python 3.11+
+* modern multiprocessing behavior
 
 Remove:
 
-* Python 2 conditionals
-* obsolete fallback logic
-* dead compatibility branches
+* Python 2 compatibility code
+* obsolete fallback branches
+* outdated unittest compatibility logic
+
+## NumPy
+
+Target:
+
+* NumPy 2.x+
+
+Replace deprecated aliases:
+
+* `np.float`
+* `np.int`
+* `np.bool`
+* `np.object`
+
+Verify:
+
+* broadcasting behavior
+* boolean masking behavior
+* shared-memory array handling
+* `np.linalg` compatibility
+* `np.nan_to_num` behavior
 
 ---
 
-## Typing and Linting
+# Typing and Linting
 
 Use:
 
@@ -126,18 +113,18 @@ Use:
 * modern type hints
 * `numpy.typing` where appropriate
 
-Prioritize type hints for:
+Prioritize typing for:
 
 * public APIs
-* sampling interfaces
+* sampler interfaces
 * probability/log-likelihood functions
+* config/result/state objects
 
 Resolve:
 
 * unused imports
 * unreachable code
 * undefined variables
-* unsafe Optional handling
 
 Avoid excessive typing complexity.
 
@@ -145,66 +132,40 @@ Avoid excessive typing complexity.
 
 # Testing Requirements
 
-## General Principles
-
 MCMC behavior is stochastic and platform-dependent.
 
 Do NOT rely on exact chain reproducibility across systems.
 
 Prefer tests validating:
 
-* statistical invariants
 * finite outputs
-* expected shapes
+* expected shapes and dtypes
 * approximate posterior statistics
+* reasonable acceptance rates
 * restart/resume correctness
 * multiprocessing stability
 
----
+Recommended statistical targets:
 
-## Preferred Test Types
-
-### Unit Tests
-
-Validate:
-
-* API behavior
-* shapes and dtypes
-* edge cases
-* serialization
-* restart logic
-
-### Statistical Tests
-
-Use simple known targets:
-
-* Gaussian distributions
-* correlated Gaussian targets
+* standard Gaussian
+* correlated Gaussian
 * bounded distributions
+* simple multimodal targets
 
-Validate:
-
-* approximate posterior mean/covariance
-* finite log probabilities
-* reasonable acceptance rates
-
-Use tolerant thresholds.
+Use tolerant statistical thresholds.
 
 ---
 
 # Workflow Instructions
 
-When implementing fixes:
+When implementing changes:
 
-1. Focus on one module or issue at a time.
-2. First identify the root cause before modifying code.
-3. Prefer minimal diffs.
+1. Identify the root cause first.
+2. Prefer minimal diffs.
+3. Focus on one issue or module at a time.
 4. Add or update tests for bug fixes.
-5. Verify compatibility with:
-
-   * Python 3.11+
-   * NumPy 2.x+
-6. Ensure all changes respect the Core Constraints.
+5. Preserve backward compatibility unless explicitly instructed otherwise.
+6. Verify compatibility with Python 3.11+ and NumPy 2.x+.
 
 When possible, provide:
 
@@ -218,7 +179,7 @@ When possible, provide:
 
 Known historical bugs and fixes are documented in:
 
-```text id="4p6k6r"
+```text id="0qlm1p"
 PYDREAM_BUGS_DOCUMENTATION.md
 ```
 

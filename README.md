@@ -2,18 +2,33 @@
 
 A Python implementation of the MT-DREAM(ZS) algorithm presented in [Laloy and Vrugt 2012](http://faculty.sites.uci.edu/jasper/files/2016/04/72.pdf).
 
+PyDREAM is a focused Bayesian sampling library designed for expensive black-box likelihoods and simulator-based inference workflows, particularly:
+
+* ODE and dynamical systems models
+* systems biology workflows
+* non-differentiable or numerically unstable likelihoods
+* multimodal posterior distributions
+* models where gradient-based approaches are difficult or impractical
+
+PyDREAM is not intended to compete with probabilistic programming frameworks such as Stan or PyMC. Instead, it focuses on robust differential-evolution MCMC sampling for scientific models where gradient-based inference is difficult, unreliable, or unavailable.
+
 ## Authorship and Maintenance
 
 PyDREAM was originally developed by Erin Shockley, Oscar Ortega, and other contributors.
-It is currently maintained and being modernized by Benjamin Zoller, with AI assistance from Google's Gemini.
 
-For example usage, see the `examples` folder. Two of the examples, CORM and Robertson, require the Python modeling framework PySB.
+The project is currently maintained and modernized by Benjamin Zoller.
 
-Documentation is available at Read the Docs.
+## Documentation and Examples
+
+Example workflows are available in the `examples` folder.
+
+Some examples, including CORM and Robertson, require the systems biology framework PySB.
+
+Documentation is available on Read the Docs.
 
 ## Installation for Development
 
-To install PyDREAM locally in editable mode along with its testing dependencies, run the following from the root of the repository:
+Install PyDREAM in editable mode with test dependencies:
 
 ```bash
 pip install -e ".[test]"
@@ -21,13 +36,15 @@ pip install -e ".[test]"
 
 ## Testing
 
-PyDREAM uses `pytest` for unit testing. After installing the test dependencies, you can run the entire test suite simply by running:
+PyDREAM uses `pytest` for testing.
+
+Run the full test suite:
 
 ```bash
 pytest -vs
 ```
 
-To run the tests with code coverage reporting:
+Run tests with coverage:
 
 ```bash
 pytest --cov
@@ -35,10 +52,17 @@ pytest --cov
 
 ## Building and Deployment
 
-PyDREAM uses modern `pyproject.toml` packaging. To build the distribution archives (wheel and source distribution) and upload them to PyPI, use `build` and `twine`:
+PyDREAM uses modern `pyproject.toml` packaging.
+
+Build source and wheel distributions:
 
 ```bash
 pip install build twine
 python -m build
+```
+
+Upload distributions to PyPI:
+
+```bash
 python -m twine upload dist/*
 ```
